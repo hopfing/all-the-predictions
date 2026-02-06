@@ -8,7 +8,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "requests (>=2.32.5,<3.0.0)"
+    "requests (>=2.32.5,<3.0.0)",
+    "polars (>=1.38.1,<2.0.0)",
+    "pydantic (>=2.12.5,<3.0.0)"
 ]
 
 [tool.poetry]
@@ -19,3 +21,8 @@ packages = [
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.2,<10.0.0)"
+]
