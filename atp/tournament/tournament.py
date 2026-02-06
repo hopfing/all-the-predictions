@@ -49,6 +49,11 @@ class Tournament:
         return f"tournaments/{self.circuit.value}/{self.tournament_id}_{name_slug}/{self.year}"
 
     @property
+    def url_slug(self) -> str:
+        """URL-friendly slug for atptour.com paths."""
+        return self.name.lower().replace("'", "").replace(" ", "-")
+
+    @property
     def logging_id(self) -> str:
         """
         Human-readable identifier for logging:

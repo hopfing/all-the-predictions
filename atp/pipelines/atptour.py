@@ -3,6 +3,7 @@ import logging
 
 from atp.tournament.discovery import TournamentDiscovery
 from atp.tournament.overview import OverviewExtractor, OverviewTransformer
+from atp.tournament.schedule import ScheduleExtractor
 
 logger = logging.getLogger("atp.pipelines.atptour")
 
@@ -47,6 +48,8 @@ def main():
         logger.info("Processing %s", tournament.logging_id)
 
         OverviewTransformer(tournament).run()
+
+        ScheduleExtractor().run(tournament)
 
         logger.info("Completed %s", tournament.logging_id)
 

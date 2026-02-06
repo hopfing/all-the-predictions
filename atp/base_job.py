@@ -148,6 +148,7 @@ class BaseJob:
         bucket: str,
         relative_path: str,
         filename: str,
+        version: str | None = None,
     ) -> Path:
         """
         Save HTML content to file, creating parent directories as needed.
@@ -156,9 +157,10 @@ class BaseJob:
         :param bucket: storage tier — raw, stage, or analytics
         :param relative_path: path within domain
         :param filename: filename (should end in .html)
+        :param version: timestamp suffix — "date" (YYYYMMDD) or "datetime" (YYYYMMDD_HHMMSS)
         :return: path to saved file
         """
-        path = self._build_path(bucket, relative_path, filename)
+        path = self._build_path(bucket, relative_path, filename, version=version)
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with path.open("w", encoding="utf-8") as f:
