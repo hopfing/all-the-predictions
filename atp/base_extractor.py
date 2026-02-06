@@ -41,9 +41,12 @@ class BaseExtractor:
         self,
         url: str,
         retries: int = 3,
+        headers: dict[str, str] | None = None,
     ) -> requests.Response:
         """
         Fetch a URL with pre-delay, retries, and exponential backoff to avoid throttling.
+
+        Optional headers are merged with session headers for per-request overrides.
         """
 
         min_delay = 0.75
@@ -53,7 +56,7 @@ class BaseExtractor:
             try:
                 time.sleep(random.uniform(min_delay, max_delay))
                 logger.info("Fetching URL: %s", url)
-                response = self.session.get(url, timeout=self.timeout)
+                response = self.session.get(url, timeout=self.timeout, headers=headers)
                 response.raise_for_status()
                 return response
             except requests.RequestException as e:
@@ -66,6 +69,7 @@ class BaseExtractor:
     def fetch_json(self, url: str) -> dict | list:
         """Fetch JSON data from a url."""
 
-        response = self._fetch(url)
+        headers = {"Accept": "application/json"}
+        response = self._fetch(url, headers=headers)
 
         return response.json()
