@@ -1,5 +1,6 @@
 import json
 
+import polars as pl
 import pytest
 
 from atp.base_job import BaseJob, BUCKETS, DATA_ROOT
@@ -46,6 +47,12 @@ class TestBuildPath:
             path = job._build_path(bucket, "some/path")
             assert bucket in str(path)
 
+    def test_domain_override(self):
+        job = ConcreteJob()
+        path = job._build_path("raw", "some/path", domain="other_domain")
+        assert "other_domain" in str(path)
+        assert "test_domain" not in str(path)
+
 
 class TestSaveJson:
 
@@ -83,3 +90,64 @@ class TestSaveJson:
         path = tmp_path / "raw" / "test_domain" / "test" / "test.json"
         content = path.read_text()
         assert "  " in content  # indented
+
+
+class TestReadJson:
+
+    def test_read_round_trip(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        data = {"key": "value", "nested": {"foo": "bar"}}
+        job.save_json(data, "raw", "test/path", "test.json")
+        result = job.read_json("raw", "test/path", "test.json")
+
+        assert result == data
+
+    def test_read_missing_file_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        with pytest.raises(FileNotFoundError):
+            job.read_json("raw", "nonexistent", "missing.json")
+
+
+class TestSaveParquet:
+
+    def test_save_creates_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+        path = job.save_parquet(df, "stage", "test/path", "test.parquet")
+
+        assert path.exists()
+
+    def test_save_round_trip(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+        path = job.save_parquet(df, "stage", "test", "data.parquet")
+        result = pl.read_parquet(path)
+
+        assert result.equals(df)
+
+    def test_save_creates_parent_dirs(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        df = pl.DataFrame({"x": [1]})
+        path = job.save_parquet(df, "stage", "deep/nested", "test.parquet")
+
+        assert path.exists()
+        assert path.parent.exists()
+
+    def test_save_returns_path(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        df = pl.DataFrame({"x": [1]})
+        path = job.save_parquet(df, "stage", "test", "out.parquet")
+
+        assert path == tmp_path / "stage" / "test_domain" / "test" / "out.parquet"

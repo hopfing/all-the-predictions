@@ -2,6 +2,8 @@ import json
 import logging
 from pathlib import Path
 
+import polars as pl
+
 logger = logging.getLogger(__name__)
 
 DATA_ROOT = Path(__file__).parent.parent / "data"
@@ -28,6 +30,7 @@ class BaseJob:
         bucket: str,
         relative_path: str,
         filename: str | None = None,
+        domain: str | None = None,
     ) -> Path:
         """
         Build absolute path within the data directory.
@@ -35,6 +38,7 @@ class BaseJob:
         :param bucket: storage tier — raw, stage, or analytics
         :param relative_path: path within domain (e.g., tournament.path or tournament.path + "/schedule")
         :param filename: optional filename to append
+        :param domain: override self.DOMAIN (for cross-domain reads)
         :return: absolute Path
         """
         if bucket not in BUCKETS:
@@ -42,7 +46,7 @@ class BaseJob:
                 f"Invalid bucket '{bucket}'. Must be one of: {', '.join(BUCKETS)}"
             )
 
-        path = DATA_ROOT / bucket / self.DOMAIN / relative_path
+        path = DATA_ROOT / bucket / (domain or self.DOMAIN) / relative_path
 
         if filename is not None:
             path = path / filename
@@ -72,5 +76,53 @@ class BaseJob:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
         logger.info("Saved JSON to %s", path.relative_to(DATA_ROOT))
+
+        return path
+
+    def read_json(
+        self,
+        bucket: str,
+        relative_path: str,
+        filename: str,
+    ) -> dict | list:
+        """
+        Read JSON data from file.
+
+        :param bucket: storage tier — raw, stage, or analytics
+        :param relative_path: path within domain
+        :param filename: filename to read
+        :return: parsed JSON data
+        """
+        path = self._build_path(bucket, relative_path, filename)
+
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        logger.info("Read JSON from %s", path.relative_to(DATA_ROOT))
+
+        return data
+
+    def save_parquet(
+        self,
+        df: pl.DataFrame,
+        bucket: str,
+        relative_path: str,
+        filename: str,
+    ) -> Path:
+        """
+        Save polars DataFrame to parquet file, creating parent directories as needed.
+
+        :param df: DataFrame to save
+        :param bucket: storage tier — raw, stage, or analytics
+        :param relative_path: path within domain
+        :param filename: filename (should end in .parquet)
+        :return: path to saved file
+        """
+        path = self._build_path(bucket, relative_path, filename)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        df.write_parquet(path)
+
+        logger.info("Saved parquet to %s", path.relative_to(DATA_ROOT))
 
         return path
