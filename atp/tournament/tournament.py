@@ -3,6 +3,21 @@ from dataclasses import dataclass
 from atp.schemas import Circuit, TournamentType
 
 
+# Display names for tournaments known by name rather than city
+TOURNAMENT_NAMES: dict[int, str] = {
+    9900: "United Cup",
+    580: "Australian Open",
+    8096: "Davis Cup Qualifiers 1st Rd",
+    520: "Roland Garros",
+    540: "Wimbledon",
+    560: "US Open",
+    8097: "Davis Cup Qualifiers 2nd Rd",
+    9210: "Laver Cup",
+    605: "Nitto ATP Finals",
+    8099: "Davis Cup Finals",
+}
+
+
 @dataclass(frozen=True)
 class Tournament:
     """
@@ -18,9 +33,18 @@ class Tournament:
     circuit: Circuit
 
     @property
+    def name(self) -> str:
+        """Display name - uses TOURNAMENT_NAMES mapping or falls back to city."""
+        return TOURNAMENT_NAMES.get(self.tournament_id, self.city)
+
+    @property
     def logging_id(self) -> str:
-        """Human-readable identifier for logging: 'ATP Brisbane 2026 (339)'"""
-        return f"{self.circuit.display_name} {self.city} {self.year} ({self.tournament_id})"
+        """
+        Human-readable identifier for logging:
+            'ATP Brisbane 2026 (339)'
+            'ATP Australian Open 2026 (580)'
+        """
+        return f"{self.circuit.display_name} {self.name} {self.year} ({self.tournament_id})"
 
     @classmethod
     def from_overview_data(
