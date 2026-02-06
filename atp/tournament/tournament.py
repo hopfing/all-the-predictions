@@ -38,6 +38,17 @@ class Tournament:
         return TOURNAMENT_NAMES.get(self.tournament_id, self.city)
 
     @property
+    def path(self) -> str:
+        """
+        Storage path segment for tournament-scoped files.
+
+        Format: tournaments/{circuit}/{tid}_{name_slug}/{year}
+        Example: tournaments/tour/580_australian_open/2026
+        """
+        name_slug = self.name.lower().replace(" ", "_").replace("-", "_")
+        return f"tournaments/{self.circuit.value}/{self.tournament_id}_{name_slug}/{self.year}"
+
+    @property
     def logging_id(self) -> str:
         """
         Human-readable identifier for logging:

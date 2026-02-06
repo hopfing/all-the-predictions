@@ -9,14 +9,17 @@ logger = logging.getLogger(__name__)
 class OverviewExtractor(BaseExtractor):
     """Extract tournament metadata from ATP API."""
 
+    DOMAIN = "atptour"
+
     def run(
         self,
         tournament_id: int,
         year: int,
     ) -> Tournament:
         """
-        Extract overview JSON data and use it to build Tournament object. Tournament
-        overview endpoint is year-agnostic but downstream processing
+        Extract overview JSON data, save raw JSON, and build Tournament object.
+
+        Tournament overview endpoint is year-agnostic but downstream processing
         (e.g., schedules, results) requires a year, so we pass it in here.
 
         :param tournament_id: ATP tournament ID
@@ -40,6 +43,8 @@ class OverviewExtractor(BaseExtractor):
             tournament_id=tournament_id,
             year=year,
         )
+
+        self.save_json(data, "raw", tournament.path, "overview.json")
 
         logger.info("Built Tournament object for %s", tournament.logging_id)
 

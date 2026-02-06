@@ -4,18 +4,24 @@ import time
 
 import requests
 
+from atp.base_job import BaseJob
+
 logger = logging.getLogger(__name__)
 
 
-class BaseExtractor:
+class BaseExtractor(BaseJob):
     """
     Base class for reusable data extraction functionality.
+
+    Adds HTTP session management on top of BaseJob's file I/O.
+    Subclasses must set DOMAIN (inherited from BaseJob).
     """
 
     def __init__(
         self,
         timeout: int = 30,
     ):
+        super().__init__()
         self.timeout = timeout
         self.session = self._create_session()
 

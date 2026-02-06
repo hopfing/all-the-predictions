@@ -10,6 +10,8 @@ class TournamentDiscovery(BaseExtractor):
     Discover tournaments available from ATP Tour API or results archives.
     """
 
+    DOMAIN = "atptour"
+
     def get_active_tournaments(self) -> list[tuple[int, int]]:
         """
         Fetch list of active tournaments from ATP live scores API returning minimal info
