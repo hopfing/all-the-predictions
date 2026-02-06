@@ -59,6 +59,17 @@ class Surface(Enum):
 _INDOOR_MAP = {"I": True, "O": False}
 
 
+def _empty_to_none(v):
+    """Convert empty strings to None for fields that expect specific values or None.
+
+    Use on optional enum/constrained fields (e.g., Surface) where an empty string
+    from the API would otherwise bypass validation instead of becoming None.
+    """
+    if v == "":
+        return None
+    return v
+
+
 class OverviewRecord(BaseModel):
     """
     Validated schema for transformed overview data.
@@ -94,13 +105,7 @@ class OverviewRecord(BaseModel):
     ig_link: str
     vixlet_url: str
 
-    @field_validator("surface", mode="before")
-    @classmethod
-    def parse_surface(cls, v):
-        """Convert empty string to None for multi-location events (e.g., Davis Cup)."""
-        if v == "":
-            return None
-        return v
+    _normalize_empty = field_validator("surface", mode="before")(_empty_to_none)
 
     @field_validator("indoor", mode="before")
     @classmethod
