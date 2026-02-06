@@ -1,4 +1,5 @@
 import json
+import re
 
 import polars as pl
 import pytest
@@ -21,6 +22,22 @@ class TestBaseJobInit:
     def test_subclass_with_domain_succeeds(self):
         job = ConcreteJob()
         assert job.DOMAIN == "test_domain"
+
+
+class TestRunDatetime:
+
+    def test_run_date_str_format(self):
+        job = ConcreteJob()
+        assert re.fullmatch(r"\d{8}", job.run_date_str)
+
+    def test_run_datetime_str_format(self):
+        job = ConcreteJob()
+        assert re.fullmatch(r"\d{8}_\d{6}", job.run_datetime_str)
+
+    def test_attributes_are_consistent(self):
+        job = ConcreteJob()
+        assert job.run_date_str == job.run_datetime.strftime("%Y%m%d")
+        assert job.run_datetime_str == job.run_datetime.strftime("%Y%m%d_%H%M%S")
 
 
 class TestBuildPath:
@@ -72,6 +89,26 @@ class TestBuildPath:
         path = job._build_path("raw", "some/path", domain="other_domain")
         assert "other_domain" in str(path)
         assert "test_domain" not in str(path)
+
+    def test_version_date(self):
+        job = ConcreteJob()
+        path = job._build_path("raw", "test", "schedule.html", version="date")
+        assert path.name == f"schedule_{job.run_date_str}.html"
+
+    def test_version_datetime(self):
+        job = ConcreteJob()
+        path = job._build_path("raw", "test", "schedule.html", version="datetime")
+        assert path.name == f"schedule_{job.run_datetime_str}.html"
+
+    def test_version_none_leaves_filename_unchanged(self):
+        job = ConcreteJob()
+        path = job._build_path("raw", "test", "schedule.html", version=None)
+        assert path.name == "schedule.html"
+
+    def test_version_invalid_raises(self):
+        job = ConcreteJob()
+        with pytest.raises(ValueError, match="Invalid version"):
+            job._build_path("raw", "test", "schedule.html", version="weekly")
 
 
 class TestSaveJson:

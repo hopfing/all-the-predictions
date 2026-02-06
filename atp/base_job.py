@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
@@ -24,6 +25,9 @@ class BaseJob:
             raise NotImplementedError(
                 f"{self.__class__.__name__} must set DOMAIN class variable"
             )
+        self.run_datetime = datetime.now()
+        self.run_date_str = self.run_datetime.strftime("%Y%m%d")
+        self.run_datetime_str = self.run_datetime.strftime("%Y%m%d_%H%M%S")
 
     def _build_path(
         self,
@@ -31,6 +35,7 @@ class BaseJob:
         relative_path: str,
         filename: str | None = None,
         domain: str | None = None,
+        version: str | None = None,
     ) -> Path:
         """
         Build absolute path within the data directory.
@@ -39,6 +44,7 @@ class BaseJob:
         :param relative_path: path within domain (e.g., tournament.path or tournament.path + "/schedule")
         :param filename: optional filename to append
         :param domain: override self.DOMAIN (for cross-domain reads)
+        :param version: timestamp suffix for filename — "date" (YYYYMMDD) or "datetime" (YYYYMMDD_HHMMSS)
         :return: absolute Path
         """
         if bucket not in BUCKETS:
@@ -50,6 +56,15 @@ class BaseJob:
 
         if filename is not None:
             path = path / filename
+
+        if version == "date":
+            path = path.with_stem(f"{path.stem}_{self.run_date_str}")
+        elif version == "datetime":
+            path = path.with_stem(f"{path.stem}_{self.run_datetime_str}")
+        elif version is not None:
+            raise ValueError(
+                f"Invalid version '{version}'. Must be 'date', 'datetime', or None."
+            )
 
         return path
 
