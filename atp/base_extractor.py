@@ -62,3 +62,10 @@ class BaseExtractor:
                 max_delay *= 1.25
                 if attempt == retries:
                     raise
+
+    def fetch_json(self, url: str) -> dict | list:
+        """Fetch JSON data from a url."""
+
+        response = self._fetch(url)
+
+        return response.json()
