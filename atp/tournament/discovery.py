@@ -26,7 +26,7 @@ class TournamentDiscovery(BaseExtractor):
         for circuit in circuits:
             url = f"{scores_url}?scoringTournamentLevel={circuit}"
 
-            logger.info("Fetching %s tournaments", circuit)
+            logger.info("Fetching %s tournaments", circuit.title())
             data = self.fetch_json(url)
 
             tournaments = data["Data"]["LiveMatchesTournamentsOrdered"]
