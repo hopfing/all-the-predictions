@@ -28,13 +28,33 @@ class TestBuildPath:
     def test_directory_path(self):
         job = ConcreteJob()
         path = job._build_path("raw", "tournaments/tour/339_brisbane/2026")
-        assert path == DATA_ROOT / "raw" / "test_domain" / "tournaments" / "tour" / "339_brisbane" / "2026"
+        assert (
+            path
+            == DATA_ROOT
+            / "raw"
+            / "test_domain"
+            / "tournaments"
+            / "tour"
+            / "339_brisbane"
+            / "2026"
+        )
 
     def test_file_path(self):
         job = ConcreteJob()
-        path = job._build_path("raw", "tournaments/tour/339_brisbane/2026", "overview.json")
+        path = job._build_path(
+            "raw", "tournaments/tour/339_brisbane/2026", "overview.json"
+        )
         assert path.name == "overview.json"
-        assert path.parent == DATA_ROOT / "raw" / "test_domain" / "tournaments" / "tour" / "339_brisbane" / "2026"
+        assert (
+            path.parent
+            == DATA_ROOT
+            / "raw"
+            / "test_domain"
+            / "tournaments"
+            / "tour"
+            / "339_brisbane"
+            / "2026"
+        )
 
     def test_invalid_bucket_raises(self):
         job = ConcreteJob()
@@ -110,6 +130,34 @@ class TestReadJson:
 
         with pytest.raises(FileNotFoundError):
             job.read_json("raw", "nonexistent", "missing.json")
+
+
+class TestSaveHtml:
+
+    def test_save_creates_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        html = "<html><body><h1>Hello</h1></body></html>"
+        path = job.save_html(html, "raw", "test/path", "page.html")
+
+        assert path.exists()
+        assert path.read_text(encoding="utf-8") == html
+
+    def test_save_creates_parent_dirs(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        path = job.save_html("<html></html>", "raw", "deep/nested/path", "page.html")
+        assert path.exists()
+        assert path.parent.exists()
+
+    def test_save_returns_path(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        path = job.save_html("<html></html>", "raw", "test", "page.html")
+        assert path == tmp_path / "raw" / "test_domain" / "test" / "page.html"
 
 
 class TestSaveParquet:

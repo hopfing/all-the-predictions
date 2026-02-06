@@ -126,3 +126,29 @@ class BaseJob:
         logger.info("Saved parquet to %s", path.relative_to(DATA_ROOT))
 
         return path
+
+    def save_html(
+        self,
+        content: str,
+        bucket: str,
+        relative_path: str,
+        filename: str,
+    ) -> Path:
+        """
+        Save HTML content to file, creating parent directories as needed.
+
+        :param content: HTML string to write
+        :param bucket: storage tier — raw, stage, or analytics
+        :param relative_path: path within domain
+        :param filename: filename (should end in .html)
+        :return: path to saved file
+        """
+        path = self._build_path(bucket, relative_path, filename)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with path.open("w", encoding="utf-8") as f:
+            f.write(content)
+
+        logger.info("Saved HTML to %s", path.relative_to(DATA_ROOT))
+
+        return path
