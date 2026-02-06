@@ -1,5 +1,7 @@
 from enum import Enum
 
+from pydantic import BaseModel, field_validator
+
 
 class Circuit(Enum):
     TOUR = "tour"
@@ -41,3 +43,73 @@ _TOURNAMENT_TYPE_CIRCUIT = {
     TournamentType.CH: Circuit.CHALLENGER,
     TournamentType.DCR: Circuit.TOUR,
 }
+
+
+class Surface(Enum):
+    """
+    Court surface types. Add new members here as new values are encountered.
+    """
+
+    HARD = "Hard"
+    CLAY = "Clay"
+    GRASS = "Grass"
+    CARPET = "Carpet"
+
+
+_INDOOR_MAP = {"I": True, "O": False}
+
+
+class OverviewRecord(BaseModel):
+    """
+    Validated schema for transformed overview data.
+
+    Combines tournament identity with overview API fields for self-describing parquet output.
+    """
+
+    # Tournament identity
+    tournament_id: int
+    year: int
+    city: str
+    circuit: Circuit
+
+    # Overview fields
+    sponsor_title: str
+    bio: str | None
+    singles_draw_size: int
+    doubles_draw_size: int
+    surface: Surface | None  # None for multi-location events (e.g., Davis Cup)
+    surface_detail: str | None
+    indoor: bool  # "I" → True, "O" → False
+    prize: str
+    total_financial_commitment: str
+    location: str
+    country: str
+    event_type: str
+    event_type_detail: int
+    flag_url: str | None
+    website: str
+    website_url: str
+    fb_link: str
+    tw_link: str
+    ig_link: str
+    vixlet_url: str
+
+    @field_validator("surface", mode="before")
+    @classmethod
+    def parse_surface(cls, v):
+        """Convert empty string to None for multi-location events (e.g., Davis Cup)."""
+        if v == "":
+            return None
+        return v
+
+    @field_validator("indoor", mode="before")
+    @classmethod
+    def parse_indoor(cls, v):
+        if v in _INDOOR_MAP:
+            return _INDOOR_MAP[v]
+        if isinstance(v, bool):
+            return v
+        raise ValueError(
+            f"Unknown InOutdoor value '{v}'. Expected 'I' or 'O'. "
+            f"Update _INDOOR_MAP in atp/schemas.py."
+        )

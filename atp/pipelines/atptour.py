@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from atp.tournament.discovery import TournamentDiscovery
-from atp.tournament.overview import OverviewExtractor
+from atp.tournament.overview import OverviewExtractor, OverviewTransformer
 
 logger = logging.getLogger("atp.pipelines.atptour")
 
@@ -46,7 +46,7 @@ def main():
 
         logger.info("Processing %s", tournament.logging_id)
 
-        # TODO: Orchestrate extractors and transformers after implementation
+        OverviewTransformer(tournament).run()
 
         logger.info("Completed %s", tournament.logging_id)
 
