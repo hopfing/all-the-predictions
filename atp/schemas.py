@@ -496,3 +496,137 @@ class ResultsRecord(BaseModel):
             self.loser_id,
             self.is_doubles,
         )
+
+
+class MatchStatsRecord(BaseModel):
+    """Per-player, per-set match statistics. Each match produces 2 players x (N+1) rows
+    where set_num=0 holds match totals and set_num=1-5 holds per-set stats."""
+
+    # Match context
+    tournament_id: int
+    year: int
+    match_code: str
+    round: Round
+    court_name: str
+    is_doubles: bool
+    is_qualifier: bool
+    match_duration_seconds: int | None = None
+    best_of: int
+    tournament_day: int
+    umpire: str | None = None
+
+    # Set context
+    set_num: int
+    set_score: int | None = None
+    tiebreak_score: int | None = None
+    set_duration_seconds: int | None = None
+
+    # Player identity
+    player_id: str
+    player_name: str
+    opponent_id: str
+    opponent_name: str
+    is_winner: bool
+    player_seed: int | None = None
+    player_entry: str | None = None
+    opponent_seed: int | None = None
+    opponent_entry: str | None = None
+    player_partner_id: str | None = None
+    player_partner_name: str | None = None
+    opponent_partner_id: str | None = None
+    opponent_partner_name: str | None = None
+
+    # Service stats
+    svc_games_played: int | None = None
+    svc_rating: int | None = None
+    svc_aces: int | None = None
+    svc_double_faults: int | None = None
+    svc_first_serve_in: int | None = None
+    svc_first_serve_att: int | None = None
+    svc_first_serve_in_pct: int | None = None
+    svc_first_serve_pts_won: int | None = None
+    svc_first_serve_pts_played: int | None = None
+    svc_first_serve_pts_won_pct: int | None = None
+    svc_second_serve_pts_won: int | None = None
+    svc_second_serve_pts_played: int | None = None
+    svc_second_serve_pts_won_pct: int | None = None
+    svc_bp_saved: int | None = None
+    svc_bp_faced: int | None = None
+    svc_bp_saved_pct: int | None = None
+
+    # Return stats
+    ret_games_played: int | None = None
+    ret_rating: int | None = None
+    ret_first_serve_pts_won: int | None = None
+    ret_first_serve_pts_played: int | None = None
+    ret_first_serve_pts_won_pct: int | None = None
+    ret_second_serve_pts_won: int | None = None
+    ret_second_serve_pts_played: int | None = None
+    ret_second_serve_pts_won_pct: int | None = None
+    ret_bp_converted: int | None = None
+    ret_bp_opportunities: int | None = None
+    ret_bp_converted_pct: int | None = None
+
+    # Point stats
+    pts_service_won: int | None = None
+    pts_service_played: int | None = None
+    pts_service_won_pct: int | None = None
+    pts_return_won: int | None = None
+    pts_return_played: int | None = None
+    pts_return_won_pct: int | None = None
+    pts_total_won: int | None = None
+    pts_total_played: int | None = None
+    pts_total_won_pct: int | None = None
+
+    _uppercase_ids = field_validator(
+        "player_id",
+        "opponent_id",
+        "player_partner_id",
+        "opponent_partner_id",
+        mode="before",
+    )(_uppercase_or_none)
+
+    @model_validator(mode="after")
+    def _correct_player_ids(self):
+        for field in (
+            "player_id",
+            "opponent_id",
+            "player_partner_id",
+            "opponent_partner_id",
+        ):
+            val = getattr(self, field)
+            if val is not None:
+                setattr(
+                    self, field, correct_player_id(val, self.tournament_id, self.year)
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_doubles_partners(self):
+        if self.is_doubles:
+            if self.player_partner_id is None:
+                raise ValueError("Doubles match must have player_partner_id")
+            if self.opponent_partner_id is None:
+                raise ValueError("Doubles match must have opponent_partner_id")
+        else:
+            partner_fields = [
+                self.player_partner_id,
+                self.player_partner_name,
+                self.opponent_partner_id,
+                self.opponent_partner_name,
+            ]
+            if any(f is not None for f in partner_fields):
+                raise ValueError("Singles match must not have partner fields")
+        return self
+
+    @computed_field
+    @property
+    def match_uid(self) -> str:
+        return create_match_uid(
+            self.year,
+            self.tournament_id,
+            self.round,
+            self.player_id,
+            self.opponent_id,
+            self.is_doubles,
+        )
