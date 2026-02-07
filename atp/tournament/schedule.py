@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
@@ -8,7 +8,13 @@ from bs4 import BeautifulSoup
 
 from atp.base_extractor import BaseExtractor
 from atp.base_job import BaseJob
-from atp.schemas import Circuit, StagedScheduleRecord
+from atp.schemas import (
+    Circuit,
+    Round,
+    ScheduleRecord,
+    StagedScheduleRecord,
+    create_match_uid,
+)
 from atp.tournament.tournament import Tournament
 
 logger = logging.getLogger(__name__)
@@ -258,3 +264,141 @@ class ScheduleStager(BaseJob):
             return int(value), None
         except ValueError:
             return None, value
+
+
+class ScheduleTransformer(BaseJob):
+    """Consolidate staged schedule snapshots into a single tournament schedule."""
+
+    DOMAIN = "atptour"
+
+    _SINGLES_DURATION = timedelta(hours=2)
+    _DOUBLES_DURATION = timedelta(hours=1, minutes=30)
+
+    def __init__(self, tournament: Tournament):
+        super().__init__()
+        self.tournament = tournament
+
+    def run(self):
+        """Read staged parquets, consolidate, and save as single parquet."""
+        stage_dir = self._build_path("stage", f"{self.tournament.path}/schedule")
+        parquet_files = self.list_files(stage_dir, "schedule_*.parquet")
+
+        if not parquet_files:
+            logger.info("No staged schedule files for %s", self.tournament.logging_id)
+            return
+
+        dfs = [pl.read_parquet(f) for f in parquet_files]
+        df = pl.concat(dfs)
+
+        # Drop TBD matches (null player IDs)
+        df = df.filter(pl.col("p1_id").is_not_null() & pl.col("p2_id").is_not_null())
+
+        if df.is_empty():
+            logger.info("No confirmed matches for %s", self.tournament.logging_id)
+            return
+
+        deduped = self._dedup_matches(df)
+        transformed = [self._transform_row(row) for row in deduped]
+        self._estimate_times(transformed)
+
+        records = [ScheduleRecord(**row) for row in transformed]
+
+        out_df = pl.DataFrame([r.model_dump() for r in records])
+        target = self._build_path("stage", self.tournament.path, "schedule.parquet")
+        self.save_parquet(out_df, target)
+
+        logger.info(
+            "Transformed %d matches for %s",
+            len(records),
+            self.tournament.logging_id,
+        )
+
+    def _dedup_matches(self, df: pl.DataFrame) -> list[dict]:
+        """Dedup by match_uid, keeping latest snapshot per match."""
+        rows_by_uid = {}
+        for row in df.iter_rows(named=True):
+            round_enum = Round[row["round_text"]]
+            uid = create_match_uid(
+                row["year"],
+                row["tournament_id"],
+                round_enum,
+                row["p1_id"],
+                row["p2_id"],
+            )
+            existing = rows_by_uid.get(uid)
+            if (
+                existing is None
+                or row["snapshot_datetime"] > existing["snapshot_datetime"]
+            ):
+                rows_by_uid[uid] = row
+        return list(rows_by_uid.values())
+
+    def _transform_row(self, row: dict) -> dict:
+        """Transform a staged row dict into ScheduleRecord kwargs."""
+        round_enum = Round[row["round_text"]]
+        match_date = date.fromisoformat(row["match_date_str"])
+
+        time_suffix = row["time_suffix"]
+        start_time_str = row["start_time_str"]
+
+        if time_suffix == "Starts At" and start_time_str:
+            time_estimated = False
+            start_time_utc = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
+        elif time_suffix == "Not Before" and start_time_str:
+            time_estimated = True
+            start_time_utc = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
+        else:
+            time_estimated = True
+            start_time_utc = None
+
+        return {
+            "tournament_id": row["tournament_id"],
+            "year": row["year"],
+            "match_date": match_date,
+            "start_time_utc": start_time_utc,
+            "time_estimated": time_estimated,
+            "tournament_day": row["tournament_day"],
+            "court_name": row["court_name"],
+            "court_match_num": row["court_match_num"],
+            "round": round_enum,
+            "is_doubles": row["is_doubles"],
+            "p1_id": row["p1_id"],
+            "p1_name": row["p1_name"],
+            "p1_seed": row["p1_seed"],
+            "p1_entry": row["p1_entry"],
+            "p1_partner_id": row["p1_partner_id"],
+            "p1_partner_name": row["p1_partner_name"],
+            "p2_id": row["p2_id"],
+            "p2_name": row["p2_name"],
+            "p2_seed": row["p2_seed"],
+            "p2_entry": row["p2_entry"],
+            "p2_partner_id": row["p2_partner_id"],
+            "p2_partner_name": row["p2_partner_name"],
+        }
+
+    def _estimate_times(self, rows: list[dict]):
+        """Estimate start times for matches without explicit times.
+
+        Processes in court_match_num order so chained estimates work
+        (e.g., match 3 can use match 2's estimated time).
+        """
+        by_court = {}
+        for row in rows:
+            key = (row["court_name"], row["court_match_num"])
+            by_court[key] = row
+
+        for row in sorted(
+            rows, key=lambda r: (r["court_name"] or "", r["court_match_num"])
+        ):
+            if row["start_time_utc"] is not None:
+                continue
+
+            prev_key = (row["court_name"], row["court_match_num"] - 1)
+            prev = by_court.get(prev_key)
+            if prev and prev["start_time_utc"]:
+                duration = (
+                    self._DOUBLES_DURATION
+                    if prev["is_doubles"]
+                    else self._SINGLES_DURATION
+                )
+                row["start_time_utc"] = prev["start_time_utc"] + duration

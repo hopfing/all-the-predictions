@@ -1,13 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
 
 import polars as pl
 import pytest
 
-from atp.schemas import Circuit
+from atp.schemas import Circuit, Round, StagedScheduleRecord
 from atp.tournament.schedule import (
     ScheduleExtractor,
     ScheduleStager,
+    ScheduleTransformer,
     _CIRCUIT_URL_PREFIX,
 )
 from atp.tournament.tournament import Tournament
@@ -416,3 +417,236 @@ class TestParseSeedEntry:
     )
     def test_parse(self, value, expected):
         assert ScheduleStager._parse_seed_entry(value) == expected
+
+
+# --- ScheduleTransformer tests ---
+
+
+def _staged_record(**overrides) -> dict:
+    """Base kwargs for a valid staged record dict (ATP singles, Starts At)."""
+    defaults = dict(
+        snapshot_datetime=datetime(2026, 2, 6, 10, 0, 0),
+        tournament_id=375,
+        year=2026,
+        match_date_str="2026-02-06",
+        start_time_str="2026-02-06 11:30:00",
+        time_suffix="Starts At",
+        tournament_day=1,
+        court_name="Court 1",
+        court_match_num=1,
+        round_text="R16",
+        is_doubles=False,
+        p1_id="AB12",
+        p1_name="A. Player",
+        p1_seed=None,
+        p1_entry=None,
+        p1_partner_id=None,
+        p1_partner_name=None,
+        p2_id="CD34",
+        p2_name="C. Opponent",
+        p2_seed=None,
+        p2_entry=None,
+        p2_partner_id=None,
+        p2_partner_name=None,
+    )
+    defaults.update(overrides)
+    return defaults
+
+
+def _write_staged_parquet(
+    tmp_path, tournament, records, filename="schedule_20260206_100000.parquet"
+):
+    """Write staged records as a parquet file in the expected location."""
+    stage_dir = tmp_path / "stage" / "atptour" / tournament.path / "schedule"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    df = pl.DataFrame(records)
+    path = stage_dir / filename
+    df.write_parquet(path)
+    return path
+
+
+class TestScheduleTransformer:
+
+    def test_basic_transform(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [_staged_record()])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        assert out.exists()
+        df = pl.read_parquet(out)
+        assert len(df) == 1
+        row = df.row(0, named=True)
+        assert row["p1_id"] == "AB12"
+        assert row["round"] == "R16"
+        assert row["match_date"] == date(2026, 2, 6)
+        assert row["start_time_utc"] == datetime(2026, 2, 6, 11, 30, 0)
+        assert row["time_estimated"] is False
+        assert row["match_uid"] == "2026_375_R16_AB12_CD34"
+
+    def test_tbd_matches_dropped(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        records = [
+            _staged_record(),
+            _staged_record(
+                p1_id=None,
+                p1_name=None,
+                p2_id=None,
+                p2_name=None,
+                court_match_num=2,
+                round_text="SF",
+                start_time_str="",
+                time_suffix="Followed By",
+            ),
+        ]
+        _write_staged_parquet(tmp_path, _TOURNAMENT, records)
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        assert len(df) == 1
+        assert df["p1_id"][0] == "AB12"
+
+    def test_dedup_keeps_latest_snapshot(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        old = _staged_record(
+            snapshot_datetime=datetime(2026, 2, 6, 8, 0, 0),
+            court_name="Court A",
+        )
+        new = _staged_record(
+            snapshot_datetime=datetime(2026, 2, 6, 12, 0, 0),
+            court_name="Court B",
+        )
+        _write_staged_parquet(
+            tmp_path,
+            _TOURNAMENT,
+            [old],
+            filename="schedule_20260206_080000.parquet",
+        )
+        _write_staged_parquet(
+            tmp_path,
+            _TOURNAMENT,
+            [new],
+            filename="schedule_20260206_120000.parquet",
+        )
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        assert len(df) == 1
+        assert df["court_name"][0] == "Court B"
+
+    def test_not_before_time_estimated(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        record = _staged_record(time_suffix="Not Before")
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [record])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        row = df.row(0, named=True)
+        assert row["time_estimated"] is True
+        assert row["start_time_utc"] == datetime(2026, 2, 6, 11, 30, 0)
+
+    def test_followed_by_time_estimated_from_preceding(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        m1 = _staged_record(court_match_num=1, p1_id="AA11", p2_id="BB22")
+        m2 = _staged_record(
+            court_match_num=2,
+            p1_id="CC33",
+            p2_id="DD44",
+            round_text="QF",
+            start_time_str="",
+            time_suffix="Followed By",
+        )
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [m1, m2])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        followed_by = df.filter(pl.col("round") == "QF").row(0, named=True)
+        assert followed_by["time_estimated"] is True
+        expected = datetime(2026, 2, 6, 11, 30, 0) + timedelta(hours=2)
+        assert followed_by["start_time_utc"] == expected
+
+    def test_followed_by_no_preceding_stays_none(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        record = _staged_record(
+            court_match_num=3,
+            start_time_str="",
+            time_suffix="Followed By",
+        )
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [record])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        assert df["start_time_utc"][0] is None
+        assert df["time_estimated"][0] is True
+
+    def test_doubles_duration_estimate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        m1 = _staged_record(
+            court_match_num=1,
+            is_doubles=True,
+            p1_id="AA11",
+            p1_partner_id="BB22",
+            p1_name="A. One",
+            p1_partner_name="B. Two",
+            p2_id="CC33",
+            p2_partner_id="DD44",
+            p2_name="C. Three",
+            p2_partner_name="D. Four",
+        )
+        m2 = _staged_record(
+            court_match_num=2,
+            p1_id="EE55",
+            p2_id="FF66",
+            p1_name="E. Five",
+            p2_name="F. Six",
+            round_text="QF",
+            start_time_str="",
+            time_suffix="Followed By",
+        )
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [m1, m2])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        qf_row = df.filter(pl.col("round") == "QF").row(0, named=True)
+        expected = datetime(2026, 2, 6, 11, 30, 0) + timedelta(hours=1, minutes=30)
+        assert qf_row["start_time_utc"] == expected
+
+    def test_no_staged_files_skips(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        assert not out.exists()
+
+    def test_all_tbd_skips(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        record = _staged_record(p1_id=None, p1_name=None, p2_id=None, p2_name=None)
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [record])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        assert not out.exists()
