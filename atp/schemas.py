@@ -79,7 +79,7 @@ class Round(str, Enum):
     THIRDPLACE = auto()
 
 
-MATCH_UID_PATTERN = re.compile(r"^\d{4}_\d+_[A-Z0-9]+_[A-Z0-9]+_[A-Z0-9]+$")
+MATCH_UID_PATTERN = re.compile(r"^\d{4}_\d+_(?:SGL|DBL)_[A-Z0-9]+_[A-Z0-9]+_[A-Z0-9]+$")
 
 
 def create_match_uid(
@@ -88,15 +88,17 @@ def create_match_uid(
     round: Round,
     p1_id: str,
     p2_id: str,
+    is_doubles: bool,
 ) -> str:
     """Create stable match UID for joining across datasets.
 
-    Format: {year}_{tournament_id}_{round}_{sorted_player_ids}
+    Format: {year}_{tournament_id}_{SGL|DBL}_{round}_{sorted_player_ids}
     Player IDs are sorted alphabetically for consistency regardless of
     which side a player appears on.
     """
+    draw = "DBL" if is_doubles else "SGL"
     player_ids = "_".join(sorted([p1_id.upper(), p2_id.upper()]))
-    match_uid = f"{year}_{tournament_id}_{round.value}_{player_ids}"
+    match_uid = f"{year}_{tournament_id}_{draw}_{round.value}_{player_ids}"
     if not MATCH_UID_PATTERN.match(match_uid):
         raise ValueError(f"Generated invalid match_uid: {match_uid}")
     return match_uid
@@ -321,5 +323,10 @@ class ScheduleRecord(BaseModel):
     @property
     def match_uid(self) -> str:
         return create_match_uid(
-            self.year, self.tournament_id, self.round, self.p1_id, self.p2_id
+            self.year,
+            self.tournament_id,
+            self.round,
+            self.p1_id,
+            self.p2_id,
+            self.is_doubles,
         )

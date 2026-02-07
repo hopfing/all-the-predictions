@@ -484,7 +484,7 @@ class TestScheduleTransformer:
         assert row["match_date"] == date(2026, 2, 6)
         assert row["start_time_utc"] == datetime(2026, 2, 6, 11, 30, 0)
         assert row["time_estimated"] is False
-        assert row["match_uid"] == "2026_375_R16_AB12_CD34"
+        assert row["match_uid"] == "2026_375_SGL_R16_AB12_CD34"
 
     def test_tbd_matches_dropped(self, tmp_path, monkeypatch):
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
@@ -650,3 +650,33 @@ class TestScheduleTransformer:
 
         out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
         assert not out.exists()
+
+    def test_estimate_times_scoped_by_tournament_day(self, tmp_path, monkeypatch):
+        """Time estimation should not chain across different tournament days."""
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        day1 = _staged_record(
+            tournament_day=1,
+            court_match_num=1,
+            p1_id="AA11",
+            p2_id="BB22",
+        )
+        day2 = _staged_record(
+            tournament_day=2,
+            court_match_num=1,
+            p1_id="CC33",
+            p2_id="DD44",
+            round_text="QF",
+            match_date_str="2026-02-07",
+            start_time_str="",
+            time_suffix="Followed By",
+        )
+        _write_staged_parquet(tmp_path, _TOURNAMENT, [day1, day2])
+
+        transformer = ScheduleTransformer(_TOURNAMENT)
+        transformer.run()
+
+        out = tmp_path / "stage" / "atptour" / _TOURNAMENT.path / "schedule.parquet"
+        df = pl.read_parquet(out)
+        day2_row = df.filter(pl.col("round") == "QF").row(0, named=True)
+        # Day 2 match 1 has no preceding match on day 2, so time stays None
+        assert day2_row["start_time_utc"] is None

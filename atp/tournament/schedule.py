@@ -324,6 +324,7 @@ class ScheduleTransformer(BaseJob):
                 round_enum,
                 row["p1_id"],
                 row["p2_id"],
+                row["is_doubles"],
             )
             existing = rows_by_uid.get(uid)
             if (
@@ -384,16 +385,25 @@ class ScheduleTransformer(BaseJob):
         """
         by_court = {}
         for row in rows:
-            key = (row["court_name"], row["court_match_num"])
+            key = (row["tournament_day"], row["court_name"], row["court_match_num"])
             by_court[key] = row
 
         for row in sorted(
-            rows, key=lambda r: (r["court_name"] or "", r["court_match_num"])
+            rows,
+            key=lambda r: (
+                r["tournament_day"],
+                r["court_name"] or "",
+                r["court_match_num"],
+            ),
         ):
             if row["start_time_utc"] is not None:
                 continue
 
-            prev_key = (row["court_name"], row["court_match_num"] - 1)
+            prev_key = (
+                row["tournament_day"],
+                row["court_name"],
+                row["court_match_num"] - 1,
+            )
             prev = by_court.get(prev_key)
             if prev and prev["start_time_utc"]:
                 duration = (

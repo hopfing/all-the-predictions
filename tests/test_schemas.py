@@ -40,25 +40,29 @@ class TestRound:
 
 
 class TestCreateMatchUid:
-    def test_basic(self):
-        uid = create_match_uid(2026, 375, Round.F, "AB12", "CD34")
-        assert uid == "2026_375_F_AB12_CD34"
+    def test_singles(self):
+        uid = create_match_uid(2026, 375, Round.F, "AB12", "CD34", is_doubles=False)
+        assert uid == "2026_375_SGL_F_AB12_CD34"
+
+    def test_doubles(self):
+        uid = create_match_uid(2026, 375, Round.F, "AB12", "CD34", is_doubles=True)
+        assert uid == "2026_375_DBL_F_AB12_CD34"
 
     def test_player_ids_sorted(self):
-        uid = create_match_uid(2026, 375, Round.F, "ZZ99", "AA01")
-        assert uid == "2026_375_F_AA01_ZZ99"
+        uid = create_match_uid(2026, 375, Round.F, "ZZ99", "AA01", is_doubles=False)
+        assert uid == "2026_375_SGL_F_AA01_ZZ99"
 
     def test_uppercase_normalization(self):
-        uid = create_match_uid(2026, 375, Round.SF, "ab12", "cd34")
-        assert uid == "2026_375_SF_AB12_CD34"
+        uid = create_match_uid(2026, 375, Round.SF, "ab12", "cd34", is_doubles=False)
+        assert uid == "2026_375_SGL_SF_AB12_CD34"
 
     def test_round_value_in_uid(self):
-        uid = create_match_uid(2026, 375, Round.R128, "AB12", "CD34")
+        uid = create_match_uid(2026, 375, Round.R128, "AB12", "CD34", is_doubles=False)
         assert "R128" in uid
 
     def test_invalid_player_id_raises(self):
         with pytest.raises(ValueError, match="invalid match_uid"):
-            create_match_uid(2026, 375, Round.F, "AB 12", "CD34")
+            create_match_uid(2026, 375, Round.F, "AB 12", "CD34", is_doubles=False)
 
 
 def _staged_kwargs(**overrides):
@@ -157,11 +161,11 @@ class TestStagedScheduleRecord:
 class TestScheduleRecord:
     def test_valid_singles(self):
         record = ScheduleRecord(**_schedule_kwargs())
-        assert record.match_uid == "2026_375_R16_AB12_CD34"
+        assert record.match_uid == "2026_375_SGL_R16_AB12_CD34"
 
     def test_match_uid_sorted_ids(self):
         record = ScheduleRecord(**_schedule_kwargs(p1_id="ZZ99", p2_id="AA01"))
-        assert record.match_uid == "2026_375_R16_AA01_ZZ99"
+        assert record.match_uid == "2026_375_SGL_R16_AA01_ZZ99"
 
     def test_valid_doubles(self):
         record = ScheduleRecord(
@@ -174,7 +178,7 @@ class TestScheduleRecord:
             )
         )
         assert record.p1_partner_id == "EF56"
-        assert "AB12" in record.match_uid
+        assert record.match_uid == "2026_375_DBL_R16_AB12_CD34"
 
     def test_time_estimated_false_requires_time(self):
         with pytest.raises(ValidationError, match="start_time_utc is required"):
