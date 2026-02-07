@@ -74,10 +74,19 @@ class OverviewTransformer(BaseJob):
         data = self.read_json("raw", self.tournament.path, "overview.json")
         data = {k: v.strip() if isinstance(v, str) else v for k, v in data.items()}
 
+        # Extract city and country from location
+        location_parts = data["Location"].split(",")
+        city = location_parts[0].strip()
+        country = location_parts[-1].strip() if len(location_parts) >= 2 else None
+        if not country:
+            country = None
+
         record = OverviewRecord(
             tournament_id=self.tournament.tournament_id,
             year=self.tournament.year,
-            city=self.tournament.city,
+            name=self.tournament.name,
+            city=city,
+            country=country,
             circuit=self.tournament.circuit,
             sponsor_title=data["SponsorTitle"],
             bio=data["Bio"],
@@ -89,7 +98,6 @@ class OverviewTransformer(BaseJob):
             prize=data["Prize"],
             total_financial_commitment=data["TotalFinancialCommitment"],
             location=data["Location"],
-            country=data["Location"].split(",")[-1].strip(),
             event_type=data["EventType"],
             event_type_detail=data["EventTypeDetail"],
             flag_url=data["FlagUrl"],

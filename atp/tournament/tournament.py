@@ -29,13 +29,23 @@ class Tournament:
 
     tournament_id: int
     year: int
-    city: str
     circuit: Circuit
+    location: str
 
     @property
     def name(self) -> str:
         """Display name - uses TOURNAMENT_NAMES mapping or falls back to city."""
-        return TOURNAMENT_NAMES.get(self.tournament_id, self.city)
+        city = self.location.split(",")[0].strip()
+
+        name = TOURNAMENT_NAMES.get(self.tournament_id, city)
+
+        if name == "Multiple Locations":
+            raise ValueError(
+                f"Unable to determine tournament name for ID {self.tournament_id} with location '{self.location}'.\n"
+                f"Add entry to TOURNAMENT_NAMES in tournament.py."
+            )
+
+        return name
 
     @property
     def url_slug(self) -> str:
@@ -79,8 +89,6 @@ class Tournament:
         :param year: tournament year
         :return: Tournament instance
         """
-        city = data["Location"].split(",")[0].strip()
-
         try:
             tournament_type = TournamentType(data["EventType"])
         except ValueError:
@@ -93,7 +101,7 @@ class Tournament:
 
         return cls(
             tournament_id=tournament_id,
-            city=city,
+            location=data["Location"],
             circuit=circuit,
             year=year,
         )

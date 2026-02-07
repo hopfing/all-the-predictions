@@ -123,7 +123,9 @@ class OverviewRecord(BaseModel):
     # Tournament identity
     tournament_id: int
     year: int
+    name: str
     city: str
+    country: str | None
     circuit: Circuit
 
     # Overview fields
@@ -137,7 +139,6 @@ class OverviewRecord(BaseModel):
     prize: str
     total_financial_commitment: str
     location: str
-    country: str
     event_type: str
     event_type_detail: int
     flag_url: str | None

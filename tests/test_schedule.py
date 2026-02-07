@@ -19,7 +19,10 @@ class TestScheduleUrl:
 
     def test_tour_url(self):
         t = Tournament(
-            tournament_id=339, year=2026, city="Brisbane", circuit=Circuit.TOUR
+            tournament_id=339,
+            year=2026,
+            location="Brisbane, Australia",
+            circuit=Circuit.TOUR,
         )
         prefix = _CIRCUIT_URL_PREFIX[t.circuit]
         url = (
@@ -32,7 +35,10 @@ class TestScheduleUrl:
 
     def test_challenger_url(self):
         t = Tournament(
-            tournament_id=1234, year=2026, city="Champaign", circuit=Circuit.CHALLENGER
+            tournament_id=1234,
+            year=2026,
+            location="Champaign, USA",
+            circuit=Circuit.CHALLENGER,
         )
         prefix = _CIRCUIT_URL_PREFIX[t.circuit]
         url = (
@@ -57,7 +63,10 @@ class TestScheduleExtractorRun:
         monkeypatch.setattr(ext, "_fetch", lambda url: fake_response)
 
         t = Tournament(
-            tournament_id=339, year=2026, city="Brisbane", circuit=Circuit.TOUR
+            tournament_id=339,
+            year=2026,
+            location="Brisbane, Australia",
+            circuit=Circuit.TOUR,
         )
         path = ext.run(t)
 
@@ -74,7 +83,10 @@ class TestScheduleExtractorRun:
         monkeypatch.setattr(ext, "_fetch", lambda url: fake_response)
 
         t = Tournament(
-            tournament_id=339, year=2026, city="Brisbane", circuit=Circuit.TOUR
+            tournament_id=339,
+            year=2026,
+            location="Brisbane, Australia",
+            circuit=Circuit.TOUR,
         )
         path = ext.run(t)
 
@@ -90,7 +102,10 @@ class TestScheduleExtractorRun:
         monkeypatch.setattr(ext, "_fetch", lambda url: fake_response)
 
         t = Tournament(
-            tournament_id=339, year=2026, city="Brisbane", circuit=Circuit.TOUR
+            tournament_id=339,
+            year=2026,
+            location="Brisbane, Australia",
+            circuit=Circuit.TOUR,
         )
         path = ext.run(t)
 

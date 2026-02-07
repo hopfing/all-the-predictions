@@ -33,7 +33,7 @@ SAMPLE_OVERVIEW = {
 TOURNAMENT = Tournament(
     tournament_id=9158,
     year=2026,
-    city="Bergamo",
+    location="Bergamo, Italy",
     circuit=Circuit.CHALLENGER,
 )
 
@@ -44,7 +44,9 @@ class TestOverviewRecord:
         record = OverviewRecord(
             tournament_id=9158,
             year=2026,
+            name="Bergamo",
             city="Bergamo",
+            country="Italy",
             circuit=Circuit.CHALLENGER,
             sponsor_title="Bergamo",
             bio=None,
@@ -56,7 +58,6 @@ class TestOverviewRecord:
             prize="\u20ac145,250",
             total_financial_commitment="\u20ac145,250",
             location="Bergamo, Italy",
-            country="Italy",
             event_type="CH",
             event_type_detail=100,
             flag_url="/-/media/images/flags/ita.svg",
@@ -75,7 +76,9 @@ class TestOverviewRecord:
         record_data = dict(
             tournament_id=1,
             year=2026,
+            name="Test",
             city="Test",
+            country="Country",
             circuit=Circuit.TOUR,
             sponsor_title="T",
             bio=None,
@@ -86,7 +89,6 @@ class TestOverviewRecord:
             prize="",
             total_financial_commitment="",
             location="Test, Country",
-            country="Country",
             event_type="250",
             event_type_detail=0,
             flag_url="",
@@ -109,7 +111,9 @@ class TestOverviewRecord:
             OverviewRecord(
                 tournament_id=1,
                 year=2026,
+                name="Test",
                 city="Test",
+                country="Country",
                 circuit=Circuit.TOUR,
                 sponsor_title="T",
                 bio=None,
@@ -121,7 +125,6 @@ class TestOverviewRecord:
                 prize="",
                 total_financial_commitment="",
                 location="Test, Country",
-                country="Country",
                 event_type="250",
                 event_type_detail=0,
                 flag_url="",
@@ -138,7 +141,9 @@ class TestOverviewRecord:
             OverviewRecord(
                 tournament_id=1,
                 year=2026,
+                name="Test",
                 city="Test",
+                country="Country",
                 circuit=Circuit.TOUR,
                 sponsor_title="T",
                 bio=None,
@@ -150,7 +155,6 @@ class TestOverviewRecord:
                 prize="",
                 total_financial_commitment="",
                 location="Test, Country",
-                country="Country",
                 event_type="250",
                 event_type_detail=0,
                 flag_url="",
@@ -167,7 +171,9 @@ class TestOverviewRecord:
         record = OverviewRecord(
             tournament_id=1,
             year=2026,
+            name="Test",
             city="Test",
+            country="Country",
             circuit=Circuit.TOUR,
             sponsor_title="T",
             bio=None,
@@ -179,7 +185,6 @@ class TestOverviewRecord:
             prize="",
             total_financial_commitment="",
             location="Test, Country",
-            country="Country",
             event_type="250",
             event_type_detail=0,
             flag_url="",
