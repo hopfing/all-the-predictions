@@ -1,4 +1,5 @@
-from enum import Enum
+import re
+from enum import Enum, auto
 
 from pydantic import BaseModel, field_validator
 
@@ -54,6 +55,48 @@ class Surface(Enum):
     CLAY = "Clay"
     GRASS = "Grass"
     CARPET = "Carpet"
+
+
+class Round(str, Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name
+
+    F = auto()
+    SF = auto()
+    QF = auto()
+    R16 = auto()
+    R32 = auto()
+    R64 = auto()
+    R128 = auto()
+    RR = auto()
+    Q3 = auto()
+    Q2 = auto()
+    Q1 = auto()
+    BRONZE = auto()
+    THIRDPLACE = auto()
+
+
+MATCH_UID_PATTERN = re.compile(r"^\d{4}_\d+_[A-Z0-9]+_[A-Z0-9]+_[A-Z0-9]+$")
+
+
+def create_match_uid(
+    year: int,
+    tournament_id: int,
+    round: Round,
+    p1_id: str,
+    p2_id: str,
+) -> str:
+    """Create stable match UID for joining across datasets.
+
+    Format: {year}_{tournament_id}_{round}_{sorted_player_ids}
+    Player IDs are sorted alphabetically for consistency regardless of
+    which side a player appears on.
+    """
+    player_ids = "_".join(sorted([p1_id.upper(), p2_id.upper()]))
+    match_uid = f"{year}_{tournament_id}_{round.value}_{player_ids}"
+    if not MATCH_UID_PATTERN.match(match_uid):
+        raise ValueError(f"Generated invalid match_uid: {match_uid}")
+    return match_uid
 
 
 _INDOOR_MAP = {"I": True, "O": False}
