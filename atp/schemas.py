@@ -4,6 +4,8 @@ from enum import Enum, auto
 
 from pydantic import BaseModel, computed_field, field_validator, model_validator
 
+from atp.player_id_corrections import correct_player_id
+
 
 class Circuit(Enum):
     TOUR = "tour"
@@ -214,6 +216,16 @@ class StagedScheduleRecord(BaseModel):
     )(_uppercase_or_none)
 
     @model_validator(mode="after")
+    def _correct_player_ids(self):
+        for field in ("p1_id", "p2_id", "p1_partner_id", "p2_partner_id"):
+            val = getattr(self, field)
+            if val is not None:
+                setattr(
+                    self, field, correct_player_id(val, self.tournament_id, self.year)
+                )
+        return self
+
+    @model_validator(mode="after")
     def _validate_doubles_partners(self):
         if self.is_doubles:
             if self.p1_id is not None and self.p1_partner_id is None:
@@ -270,6 +282,16 @@ class ScheduleRecord(BaseModel):
     _uppercase_ids = field_validator(
         "p1_id", "p2_id", "p1_partner_id", "p2_partner_id", mode="before"
     )(_uppercase_or_none)
+
+    @model_validator(mode="after")
+    def _correct_player_ids(self):
+        for field in ("p1_id", "p2_id", "p1_partner_id", "p2_partner_id"):
+            val = getattr(self, field)
+            if val is not None:
+                setattr(
+                    self, field, correct_player_id(val, self.tournament_id, self.year)
+                )
+        return self
 
     @model_validator(mode="after")
     def _validate_time_estimated(self):

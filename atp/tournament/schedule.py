@@ -288,7 +288,7 @@ class ScheduleTransformer(BaseJob):
             return
 
         dfs = [pl.read_parquet(f) for f in parquet_files]
-        df = pl.concat(dfs)
+        df = pl.concat(dfs, how="diagonal_relaxed")
 
         # Drop TBD matches (null player IDs)
         df = df.filter(pl.col("p1_id").is_not_null() & pl.col("p2_id").is_not_null())
