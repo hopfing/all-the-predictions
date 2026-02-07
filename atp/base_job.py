@@ -169,3 +169,19 @@ class BaseJob:
         logger.info("Saved HTML to %s", path.relative_to(DATA_ROOT))
 
         return path
+
+    def list_files(
+        self,
+        bucket: str,
+        relative_path: str,
+        pattern: str = "*",
+        domain: str | None = None,
+    ) -> list[Path]:
+        """List files matching a glob pattern within a data directory.
+
+        Returns paths sorted by name (ascending).
+        """
+        directory = self._build_path(bucket, relative_path, domain=domain)
+        if not directory.is_dir():
+            return []
+        return sorted(directory.glob(pattern))

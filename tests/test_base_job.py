@@ -236,3 +236,43 @@ class TestSaveParquet:
         path = job.save_parquet(df, "stage", "test", "out.parquet")
 
         assert path == tmp_path / "stage" / "test_domain" / "test" / "out.parquet"
+
+
+class TestListFiles:
+
+    def test_returns_matching_files_sorted(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        dir_path = tmp_path / "raw" / "test_domain" / "test" / "schedule"
+        dir_path.mkdir(parents=True)
+        (dir_path / "schedule_20260102_100000.html").write_text("a")
+        (dir_path / "schedule_20260101_090000.html").write_text("b")
+        (dir_path / "schedule_20260103_110000.html").write_text("c")
+
+        result = job.list_files("raw", "test/schedule", "schedule_*.html")
+
+        assert len(result) == 3
+        assert result[0].name == "schedule_20260101_090000.html"
+        assert result[2].name == "schedule_20260103_110000.html"
+
+    def test_empty_list_for_missing_dir(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        result = job.list_files("raw", "nonexistent/path")
+        assert result == []
+
+    def test_pattern_filtering(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        dir_path = tmp_path / "raw" / "test_domain" / "test"
+        dir_path.mkdir(parents=True)
+        (dir_path / "data.json").write_text("{}")
+        (dir_path / "data.html").write_text("<html>")
+        (dir_path / "other.json").write_text("{}")
+
+        result = job.list_files("raw", "test", "*.json")
+        assert len(result) == 2
+        assert all(p.suffix == ".json" for p in result)
