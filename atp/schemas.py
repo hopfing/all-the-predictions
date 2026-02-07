@@ -1,7 +1,8 @@
 import re
+from datetime import date, datetime
 from enum import Enum, auto
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, computed_field, field_validator, model_validator
 
 
 class Circuit(Enum):
@@ -102,6 +103,12 @@ def create_match_uid(
 _INDOOR_MAP = {"I": True, "O": False}
 
 
+def _uppercase_or_none(v: str | None) -> str | None:
+    if isinstance(v, str):
+        return v.upper()
+    return v
+
+
 def _empty_to_none(v):
     """Convert empty strings to None for fields that expect specific values or None.
 
@@ -161,4 +168,136 @@ class OverviewRecord(BaseModel):
         raise ValueError(
             f"Unknown InOutdoor value '{v}'. Expected 'I' or 'O'. "
             f"Update _INDOOR_MAP in atp/schemas.py."
+        )
+
+
+class StagedScheduleRecord(BaseModel):
+    """Raw schedule data from a single HTML snapshot. One record per ATP match."""
+
+    # Snapshot metadata
+    snapshot_datetime: datetime
+
+    # Tournament context
+    tournament_id: int
+    year: int
+
+    # Time fields — raw strings from HTML data attributes
+    match_date_str: str
+    start_time_str: str
+    time_suffix: str
+
+    # Schedule context
+    tournament_day: int
+    court_name: str | None
+    court_match_num: int
+    round_text: str
+    is_doubles: bool
+
+    # Player 1
+    p1_id: str | None = None
+    p1_name: str | None = None
+    p1_seed: int | None = None
+    p1_entry: str | None = None
+    p1_partner_id: str | None = None
+    p1_partner_name: str | None = None
+
+    # Player 2
+    p2_id: str | None = None
+    p2_name: str | None = None
+    p2_seed: int | None = None
+    p2_entry: str | None = None
+    p2_partner_id: str | None = None
+    p2_partner_name: str | None = None
+
+    _uppercase_ids = field_validator(
+        "p1_id", "p2_id", "p1_partner_id", "p2_partner_id", mode="before"
+    )(_uppercase_or_none)
+
+    @model_validator(mode="after")
+    def _validate_doubles_partners(self):
+        if self.is_doubles:
+            if self.p1_id is not None and self.p1_partner_id is None:
+                raise ValueError("Doubles match with p1_id must have p1_partner_id")
+            if self.p2_id is not None and self.p2_partner_id is None:
+                raise ValueError("Doubles match with p2_id must have p2_partner_id")
+        else:
+            partner_fields = [
+                self.p1_partner_id,
+                self.p1_partner_name,
+                self.p2_partner_id,
+                self.p2_partner_name,
+            ]
+            if any(f is not None for f in partner_fields):
+                raise ValueError("Singles match must not have partner fields")
+        return self
+
+
+class ScheduleRecord(BaseModel):
+    """Consolidated schedule data. One record per unique match across all snapshots."""
+
+    # Tournament context
+    tournament_id: int
+    year: int
+
+    # Time fields — properly typed
+    match_date: date
+    start_time_utc: datetime | None = None
+    time_estimated: bool
+
+    # Schedule context
+    tournament_day: int
+    court_name: str | None
+    court_match_num: int
+    round: Round
+    is_doubles: bool
+
+    # Player 1 — required (TBD dropped)
+    p1_id: str
+    p1_name: str
+    p1_seed: int | None = None
+    p1_entry: str | None = None
+    p1_partner_id: str | None = None
+    p1_partner_name: str | None = None
+
+    # Player 2 — required (TBD dropped)
+    p2_id: str
+    p2_name: str
+    p2_seed: int | None = None
+    p2_entry: str | None = None
+    p2_partner_id: str | None = None
+    p2_partner_name: str | None = None
+
+    _uppercase_ids = field_validator(
+        "p1_id", "p2_id", "p1_partner_id", "p2_partner_id", mode="before"
+    )(_uppercase_or_none)
+
+    @model_validator(mode="after")
+    def _validate_time_estimated(self):
+        if not self.time_estimated and self.start_time_utc is None:
+            raise ValueError("start_time_utc is required when time_estimated is False")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_doubles_partners(self):
+        if self.is_doubles:
+            if self.p1_partner_id is None:
+                raise ValueError("Doubles match must have p1_partner_id")
+            if self.p2_partner_id is None:
+                raise ValueError("Doubles match must have p2_partner_id")
+        else:
+            partner_fields = [
+                self.p1_partner_id,
+                self.p1_partner_name,
+                self.p2_partner_id,
+                self.p2_partner_name,
+            ]
+            if any(f is not None for f in partner_fields):
+                raise ValueError("Singles match must not have partner fields")
+        return self
+
+    @computed_field
+    @property
+    def match_uid(self) -> str:
+        return create_match_uid(
+            self.year, self.tournament_id, self.round, self.p1_id, self.p2_id
         )
