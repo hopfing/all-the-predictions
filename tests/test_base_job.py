@@ -182,7 +182,8 @@ class TestSaveHtml:
         job = ConcreteJob()
 
         html = "<html><body><h1>Hello</h1></body></html>"
-        path = job.save_html(html, "raw", "test/path", "page.html")
+        target = job._build_path("raw", "test/path", "page.html")
+        path = job.save_html(html, target)
 
         assert path.exists()
         assert path.read_text(encoding="utf-8") == html
@@ -191,7 +192,8 @@ class TestSaveHtml:
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
-        path = job.save_html("<html></html>", "raw", "deep/nested/path", "page.html")
+        target = job._build_path("raw", "deep/nested/path", "page.html")
+        path = job.save_html("<html></html>", target)
         assert path.exists()
         assert path.parent.exists()
 
@@ -199,7 +201,8 @@ class TestSaveHtml:
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
-        path = job.save_html("<html></html>", "raw", "test", "page.html")
+        target = job._build_path("raw", "test", "page.html")
+        path = job.save_html("<html></html>", target)
         assert path == tmp_path / "raw" / "test_domain" / "test" / "page.html"
 
 
@@ -210,8 +213,9 @@ class TestReadHtml:
         job = ConcreteJob()
 
         html = "<html><body><h1>Hello</h1></body></html>"
-        path = job.save_html(html, "raw", "test/path", "page.html")
-        result = job.read_html(path)
+        target = job._build_path("raw", "test/path", "page.html")
+        job.save_html(html, target)
+        result = job.read_html(target)
 
         assert result == html
 
@@ -358,7 +362,7 @@ class TestAtomicWriteCleanup:
 
         # Non-string content forces f.write() to raise TypeError
         with pytest.raises(TypeError):
-            job.save_html(123, "raw", "test", "page.html")  # type: ignore[arg-type]
+            job.save_html(123, target)  # type: ignore[arg-type]
 
         assert target.read_text() == "<html>original</html>"
         assert list(target.parent.glob("*.tmp")) == []

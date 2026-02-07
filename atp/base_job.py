@@ -151,25 +151,14 @@ class BaseJob:
 
         return path
 
-    def save_html(
-        self,
-        content: str,
-        bucket: str,
-        relative_path: str,
-        filename: str,
-        version: str | None = None,
-    ) -> Path:
+    def save_html(self, content: str, path: Path) -> Path:
         """
         Save HTML content to file, creating parent directories as needed.
 
         :param content: HTML string to write
-        :param bucket: storage tier — raw, stage, or analytics
-        :param relative_path: path within domain
-        :param filename: filename (should end in .html)
-        :param version: timestamp suffix — "date" (YYYYMMDD) or "datetime" (YYYYMMDD_HHMMSS)
+        :param path: absolute path to write HTML file
         :return: path to saved file
         """
-        path = self._build_path(bucket, relative_path, filename, version=version)
         tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 
