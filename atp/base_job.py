@@ -117,6 +117,20 @@ class BaseJob:
 
         return data
 
+    def read_html(self, path: Path) -> str:
+        """
+        Read HTML content from file.
+
+        :param path: absolute path to HTML file
+        :return: HTML string
+        """
+        with path.open("r", encoding="utf-8") as f:
+            content = f.read()
+
+        logger.info("Read HTML from %s", path.relative_to(DATA_ROOT))
+
+        return content
+
     def save_parquet(
         self,
         df: pl.DataFrame,

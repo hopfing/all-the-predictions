@@ -197,6 +197,27 @@ class TestSaveHtml:
         assert path == tmp_path / "raw" / "test_domain" / "test" / "page.html"
 
 
+class TestReadHtml:
+
+    def test_read_round_trip(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        html = "<html><body><h1>Hello</h1></body></html>"
+        path = job.save_html(html, "raw", "test/path", "page.html")
+        result = job.read_html(path)
+
+        assert result == html
+
+    def test_read_missing_file_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        missing = tmp_path / "raw" / "test_domain" / "missing.html"
+        with pytest.raises(FileNotFoundError):
+            job.read_html(missing)
+
+
 class TestSaveParquet:
 
     def test_save_creates_file(self, tmp_path, monkeypatch):
