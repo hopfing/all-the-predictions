@@ -121,25 +121,16 @@ class BaseJob:
 
         return content
 
-    def save_parquet(
-        self,
-        df: pl.DataFrame,
-        bucket: str,
-        relative_path: str,
-        filename: str,
-    ) -> Path:
+    def save_parquet(self, df: pl.DataFrame, path: Path) -> Path:
         """
         Save polars DataFrame to parquet file, creating parent directories as needed.
 
         Embeds a schema_hash in parquet metadata for future schema drift detection.
 
         :param df: DataFrame to save
-        :param bucket: storage tier — raw, stage, or analytics
-        :param relative_path: path within domain
-        :param filename: filename (should end in .parquet)
+        :param path: absolute path to write parquet file
         :return: path to saved file
         """
-        path = self._build_path(bucket, relative_path, filename)
         tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 

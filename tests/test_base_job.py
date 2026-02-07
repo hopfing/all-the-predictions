@@ -231,7 +231,8 @@ class TestSaveParquet:
         job = ConcreteJob()
 
         df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
-        path = job.save_parquet(df, "stage", "test/path", "test.parquet")
+        target = job._build_path("stage", "test/path", "test.parquet")
+        path = job.save_parquet(df, target)
 
         assert path.exists()
 
@@ -240,7 +241,8 @@ class TestSaveParquet:
         job = ConcreteJob()
 
         df = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]})
-        path = job.save_parquet(df, "stage", "test", "data.parquet")
+        target = job._build_path("stage", "test", "data.parquet")
+        path = job.save_parquet(df, target)
         result = pl.read_parquet(path)
 
         assert result.equals(df)
@@ -250,7 +252,8 @@ class TestSaveParquet:
         job = ConcreteJob()
 
         df = pl.DataFrame({"x": [1]})
-        path = job.save_parquet(df, "stage", "deep/nested", "test.parquet")
+        target = job._build_path("stage", "deep/nested", "test.parquet")
+        path = job.save_parquet(df, target)
 
         assert path.exists()
         assert path.parent.exists()
@@ -260,7 +263,8 @@ class TestSaveParquet:
         job = ConcreteJob()
 
         df = pl.DataFrame({"x": [1]})
-        path = job.save_parquet(df, "stage", "test", "out.parquet")
+        target = job._build_path("stage", "test", "out.parquet")
+        path = job.save_parquet(df, target)
 
         assert path == tmp_path / "stage" / "test_domain" / "test" / "out.parquet"
 
@@ -339,7 +343,7 @@ class TestAtomicWriteCleanup:
 
         df = pl.DataFrame({"a": [1]})
         with pytest.raises(IOError, match="disk full"):
-            job.save_parquet(df, "stage", "test", "data.parquet")
+            job.save_parquet(df, target)
 
         assert target.read_bytes() == b"original content"
         assert list(target.parent.glob("*.tmp")) == []

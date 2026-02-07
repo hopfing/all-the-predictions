@@ -115,4 +115,5 @@ class OverviewTransformer(BaseJob):
 
         logger.info("Transformed overview for %s", self.tournament.logging_id)
 
-        return self.save_parquet(df, "stage", self.tournament.path, "overview.parquet")
+        path = self._build_path("stage", self.tournament.path, "overview.parquet")
+        return self.save_parquet(df, path)
