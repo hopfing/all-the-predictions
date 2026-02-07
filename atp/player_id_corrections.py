@@ -27,6 +27,7 @@ _CORRECTIONS = {
     ("SR:COMPETITOR:915951", 8096, 2026): "R0IL",  # Iliyan Radulov
     ("SR:COMPETITOR:617530", 8096, 2026): "W0BU",  # Olle Wallin
     ("SR:COMPETITOR:168420", 8096, 2026): "AG08",  # Andres Andrade
+    ("SR:COMPETITOR:634350", 8096, 2026): "D0HJ",  # Branko Djuric
 }
 
 

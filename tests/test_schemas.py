@@ -4,6 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from atp.schemas import (
+    ROUND_DISPLAY_MAP,
+    ResultsRecord,
     Round,
     ScheduleRecord,
     StagedScheduleRecord,
@@ -215,3 +217,174 @@ class TestScheduleRecord:
         record = ScheduleRecord(**_schedule_kwargs(p1_id="ab12", p2_id="cd34"))
         assert record.p1_id == "AB12"
         assert record.p2_id == "CD34"
+
+
+def test_all_rounds_have_display_name():
+    """Every Round member must appear as a value in ROUND_DISPLAY_MAP."""
+    mapped_rounds = set(ROUND_DISPLAY_MAP.values())
+    for member in Round:
+        assert (
+            member in mapped_rounds
+        ), f"Round.{member.name} has no entry in ROUND_DISPLAY_MAP in atp/schemas.py."
+
+
+def _results_kwargs(**overrides):
+    """Base kwargs for a valid ResultsRecord (ATP singles, completed)."""
+    defaults = dict(
+        tournament_id=375,
+        year=2026,
+        match_date=date(2026, 2, 4),
+        tournament_day=1,
+        round=Round.QF,
+        court_name="Court 1",
+        is_doubles=False,
+        match_status="completed",
+        duration_seconds=5400,
+        score="6-4 7-6(5)",
+        w_set1=6,
+        l_set1=4,
+        w_set2=7,
+        l_set2=6,
+        tb_set2=5,
+        winner_id="AB12",
+        winner_name="A. Winner",
+        loser_id="CD34",
+        loser_name="C. Loser",
+    )
+    defaults.update(overrides)
+    return defaults
+
+
+class TestResultsRecord:
+    def test_valid_singles(self):
+        record = ResultsRecord(**_results_kwargs())
+        assert record.winner_id == "AB12"
+        assert record.match_uid == "2026_375_SGL_QF_AB12_CD34"
+
+    def test_valid_doubles(self):
+        record = ResultsRecord(
+            **_results_kwargs(
+                is_doubles=True,
+                winner_partner_id="EF56",
+                winner_partner_name="E. Partner",
+                loser_partner_id="GH78",
+                loser_partner_name="G. Partner",
+            )
+        )
+        assert record.winner_partner_id == "EF56"
+        assert record.match_uid == "2026_375_DBL_QF_AB12_CD34"
+
+    def test_match_uid_sorted_ids(self):
+        record = ResultsRecord(**_results_kwargs(winner_id="ZZ99", loser_id="AA01"))
+        assert record.match_uid == "2026_375_SGL_QF_AA01_ZZ99"
+
+    def test_uppercase_player_ids(self):
+        record = ResultsRecord(**_results_kwargs(winner_id="ab12", loser_id="cd34"))
+        assert record.winner_id == "AB12"
+        assert record.loser_id == "CD34"
+
+    def test_walkover(self):
+        record = ResultsRecord(
+            **_results_kwargs(
+                match_status="walkover",
+                duration_seconds=None,
+                score="",
+                w_set1=None,
+                l_set1=None,
+                w_set2=None,
+                l_set2=None,
+                tb_set2=None,
+            )
+        )
+        assert record.match_status == "walkover"
+        assert record.score == ""
+
+    def test_walkover_with_duration_raises(self):
+        with pytest.raises(ValidationError, match="Walkover must not have duration"):
+            ResultsRecord(
+                **_results_kwargs(
+                    match_status="walkover",
+                    score="",
+                    w_set1=None,
+                    l_set1=None,
+                    w_set2=None,
+                    l_set2=None,
+                    tb_set2=None,
+                )
+            )
+
+    def test_walkover_with_score_raises(self):
+        with pytest.raises(ValidationError, match="Walkover must have empty score"):
+            ResultsRecord(
+                **_results_kwargs(
+                    match_status="walkover",
+                    duration_seconds=None,
+                    w_set1=None,
+                    l_set1=None,
+                    w_set2=None,
+                    l_set2=None,
+                    tb_set2=None,
+                )
+            )
+
+    def test_walkover_with_sets_raises(self):
+        with pytest.raises(ValidationError, match="Walkover must not have set scores"):
+            ResultsRecord(
+                **_results_kwargs(
+                    match_status="walkover",
+                    duration_seconds=None,
+                    score="",
+                )
+            )
+
+    def test_set_gap_raises(self):
+        with pytest.raises(ValidationError, match="Set gap"):
+            ResultsRecord(
+                **_results_kwargs(
+                    w_set1=6,
+                    l_set1=4,
+                    w_set2=None,
+                    l_set2=None,
+                    tb_set2=None,
+                    w_set3=6,
+                    l_set3=3,
+                )
+            )
+
+    def test_set_w_without_l_raises(self):
+        with pytest.raises(ValidationError, match="w and l must both be present"):
+            ResultsRecord(
+                **_results_kwargs(
+                    w_set1=6,
+                    l_set1=None,
+                    w_set2=None,
+                    l_set2=None,
+                    tb_set2=None,
+                )
+            )
+
+    def test_retirement(self):
+        record = ResultsRecord(
+            **_results_kwargs(
+                match_status="retired",
+                score="6-3 4-5 RET",
+                w_set1=6,
+                l_set1=3,
+                w_set2=4,
+                l_set2=5,
+                tb_set2=None,
+            )
+        )
+        assert record.match_status == "retired"
+
+    def test_doubles_requires_partners(self):
+        with pytest.raises(ValidationError, match="winner_partner_id"):
+            ResultsRecord(**_results_kwargs(is_doubles=True))
+
+    def test_singles_rejects_partners(self):
+        with pytest.raises(ValidationError, match="Singles match"):
+            ResultsRecord(
+                **_results_kwargs(
+                    winner_partner_id="EF56", winner_partner_name="E. Partner"
+                )
+            )

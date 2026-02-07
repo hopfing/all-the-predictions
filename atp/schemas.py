@@ -79,6 +79,23 @@ class Round(str, Enum):
     THIRDPLACE = auto()
 
 
+ROUND_DISPLAY_MAP: dict[str, "Round"] = {
+    "Final": Round.F,
+    "Semifinals": Round.SF,
+    "Quarterfinals": Round.QF,
+    "Round of 16": Round.R16,
+    "Round of 32": Round.R32,
+    "Round of 64": Round.R64,
+    "Round of 128": Round.R128,
+    "Round Robin": Round.RR,
+    "1st Round Qualifying": Round.Q1,
+    "2nd Round Qualifying": Round.Q2,
+    "3rd Round Qualifying": Round.Q3,
+    "Bronze Medal Match": Round.BRONZE,
+    "Third Place": Round.THIRDPLACE,
+}
+
+
 MATCH_UID_PATTERN = re.compile(r"^\d{4}_\d+_(?:SGL|DBL)_[A-Z0-9]+_[A-Z0-9]+_[A-Z0-9]+$")
 
 
@@ -328,5 +345,154 @@ class ScheduleRecord(BaseModel):
             self.round,
             self.p1_id,
             self.p2_id,
+            self.is_doubles,
+        )
+
+
+_SET_FIELDS = [
+    ("w_set1", "l_set1", "tb_set1"),
+    ("w_set2", "l_set2", "tb_set2"),
+    ("w_set3", "l_set3", "tb_set3"),
+    ("w_set4", "l_set4", "tb_set4"),
+    ("w_set5", "l_set5", "tb_set5"),
+]
+
+
+class ResultsRecord(BaseModel):
+    """Validated schema for match results data. One record per completed match."""
+
+    # Tournament context
+    tournament_id: int
+    year: int
+
+    # Match context
+    match_date: date
+    tournament_day: int
+    round: Round
+    court_name: str | None
+    is_doubles: bool
+
+    # Outcome
+    match_status: str  # "completed", "retired", "walkover"
+    duration_seconds: int | None = None
+    score: str  # "6-4 7-6(5)", "" for walkover
+
+    # Set scores — from match winner's perspective
+    w_set1: int | None = None
+    l_set1: int | None = None
+    tb_set1: int | None = None
+    w_set2: int | None = None
+    l_set2: int | None = None
+    tb_set2: int | None = None
+    w_set3: int | None = None
+    l_set3: int | None = None
+    tb_set3: int | None = None
+    w_set4: int | None = None
+    l_set4: int | None = None
+    tb_set4: int | None = None
+    w_set5: int | None = None
+    l_set5: int | None = None
+    tb_set5: int | None = None
+
+    # Winner
+    winner_id: str
+    winner_name: str
+    winner_seed: int | None = None
+    winner_entry: str | None = None
+    winner_partner_id: str | None = None
+    winner_partner_name: str | None = None
+
+    # Loser
+    loser_id: str
+    loser_name: str
+    loser_seed: int | None = None
+    loser_entry: str | None = None
+    loser_partner_id: str | None = None
+    loser_partner_name: str | None = None
+
+    # Metadata
+    match_code: str | None = None
+    umpire: str | None = None
+
+    _uppercase_ids = field_validator(
+        "winner_id",
+        "loser_id",
+        "winner_partner_id",
+        "loser_partner_id",
+        mode="before",
+    )(_uppercase_or_none)
+
+    @model_validator(mode="after")
+    def _correct_player_ids(self):
+        for field in (
+            "winner_id",
+            "loser_id",
+            "winner_partner_id",
+            "loser_partner_id",
+        ):
+            val = getattr(self, field)
+            if val is not None:
+                setattr(
+                    self, field, correct_player_id(val, self.tournament_id, self.year)
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_doubles_partners(self):
+        if self.is_doubles:
+            if self.winner_partner_id is None:
+                raise ValueError("Doubles match must have winner_partner_id")
+            if self.loser_partner_id is None:
+                raise ValueError("Doubles match must have loser_partner_id")
+        else:
+            partner_fields = [
+                self.winner_partner_id,
+                self.winner_partner_name,
+                self.loser_partner_id,
+                self.loser_partner_name,
+            ]
+            if any(f is not None for f in partner_fields):
+                raise ValueError("Singles match must not have partner fields")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_walkover(self):
+        if self.match_status == "walkover":
+            if self.duration_seconds is not None:
+                raise ValueError("Walkover must not have duration_seconds")
+            if self.score != "":
+                raise ValueError("Walkover must have empty score string")
+            for w, l, tb in _SET_FIELDS:
+                if any(getattr(self, f) is not None for f in (w, l, tb)):
+                    raise ValueError("Walkover must not have set scores")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_sets_consistent(self):
+        for i, (w, l, tb) in enumerate(_SET_FIELDS):
+            w_val = getattr(self, w)
+            l_val = getattr(self, l)
+            # w and l must both be present or both absent
+            if (w_val is None) != (l_val is None):
+                raise ValueError(f"Set {i + 1}: w and l must both be present or absent")
+            # No gaps: if set N is absent, all later sets must be absent
+            if w_val is None:
+                for w2, l2, tb2 in _SET_FIELDS[i + 1 :]:
+                    if getattr(self, w2) is not None:
+                        raise ValueError(
+                            f"Set gap: set {i + 1} is absent but later set is present"
+                        )
+                break
+        return self
+
+    @computed_field
+    @property
+    def match_uid(self) -> str:
+        return create_match_uid(
+            self.year,
+            self.tournament_id,
+            self.round,
+            self.winner_id,
+            self.loser_id,
             self.is_doubles,
         )
