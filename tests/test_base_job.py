@@ -285,7 +285,8 @@ class TestListFiles:
         (dir_path / "schedule_20260101_090000.html").write_text("b")
         (dir_path / "schedule_20260103_110000.html").write_text("c")
 
-        result = job.list_files("raw", "test/schedule", "schedule_*.html")
+        directory = job._build_path("raw", "test/schedule")
+        result = job.list_files(directory, "schedule_*.html")
 
         assert len(result) == 3
         assert result[0].name == "schedule_20260101_090000.html"
@@ -295,7 +296,8 @@ class TestListFiles:
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
-        result = job.list_files("raw", "nonexistent/path")
+        directory = job._build_path("raw", "nonexistent/path")
+        result = job.list_files(directory)
         assert result == []
 
     def test_pattern_filtering(self, tmp_path, monkeypatch):
@@ -308,7 +310,8 @@ class TestListFiles:
         (dir_path / "data.html").write_text("<html>")
         (dir_path / "other.json").write_text("{}")
 
-        result = job.list_files("raw", "test", "*.json")
+        directory = job._build_path("raw", "test")
+        result = job.list_files(directory, "*.json")
         assert len(result) == 2
         assert all(p.suffix == ".json" for p in result)
 

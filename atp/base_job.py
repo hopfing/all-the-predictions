@@ -175,18 +175,14 @@ class BaseJob:
 
         return path
 
-    def list_files(
-        self,
-        bucket: str,
-        relative_path: str,
-        pattern: str = "*",
-        domain: str | None = None,
-    ) -> list[Path]:
+    def list_files(self, directory: Path, pattern: str = "*") -> list[Path]:
         """List files matching a glob pattern within a data directory.
 
         Returns paths sorted by name (ascending).
+
+        :param directory: absolute path to directory to search
+        :param pattern: glob pattern to match (default: "*")
         """
-        directory = self._build_path(bucket, relative_path, domain=domain)
         if not directory.is_dir():
             return []
         return sorted(directory.glob(pattern))
