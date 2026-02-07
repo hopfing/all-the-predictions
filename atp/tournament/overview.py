@@ -71,7 +71,8 @@ class OverviewTransformer(BaseJob):
 
         :return: path to saved parquet file
         """
-        data = self.read_json("raw", self.tournament.path, "overview.json")
+        path = self._build_path("raw", self.tournament.path, "overview.json")
+        data = self.read_json(path)
         data = {k: v.strip() if isinstance(v, str) else v for k, v in data.items()}
 
         # Extract city and country from location

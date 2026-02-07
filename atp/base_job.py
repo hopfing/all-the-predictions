@@ -102,22 +102,13 @@ class BaseJob:
 
         return path
 
-    def read_json(
-        self,
-        bucket: str,
-        relative_path: str,
-        filename: str,
-    ) -> dict | list:
+    def read_json(self, path: Path) -> dict | list:
         """
         Read JSON data from file.
 
-        :param bucket: storage tier — raw, stage, or analytics
-        :param relative_path: path within domain
-        :param filename: filename to read
+        :param path: absolute path to JSON file
         :return: parsed JSON data
         """
-        path = self._build_path(bucket, relative_path, filename)
-
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 

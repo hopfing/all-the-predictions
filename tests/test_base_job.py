@@ -157,8 +157,8 @@ class TestReadJson:
         job = ConcreteJob()
 
         data = {"key": "value", "nested": {"foo": "bar"}}
-        job.save_json(data, "raw", "test/path", "test.json")
-        result = job.read_json("raw", "test/path", "test.json")
+        path = job.save_json(data, "raw", "test/path", "test.json")
+        result = job.read_json(path)
 
         assert result == data
 
@@ -166,8 +166,9 @@ class TestReadJson:
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
+        missing = tmp_path / "raw" / "test_domain" / "nonexistent" / "missing.json"
         with pytest.raises(FileNotFoundError):
-            job.read_json("raw", "nonexistent", "missing.json")
+            job.read_json(missing)
 
 
 class TestSaveHtml:
