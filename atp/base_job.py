@@ -85,10 +85,17 @@ class BaseJob:
         :return: path to saved file
         """
         path = self._build_path(bucket, relative_path, filename)
+        tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        try:
+            with tmp_path.open("w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            tmp_path.replace(path)
+        except Exception:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise
 
         logger.info("Saved JSON to %s", path.relative_to(DATA_ROOT))
 
@@ -148,9 +155,16 @@ class BaseJob:
         :return: path to saved file
         """
         path = self._build_path(bucket, relative_path, filename)
+        tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        df.write_parquet(path)
+        try:
+            df.write_parquet(tmp_path)
+            tmp_path.replace(path)
+        except Exception:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise
 
         logger.info("Saved parquet to %s", path.relative_to(DATA_ROOT))
 
@@ -175,10 +189,17 @@ class BaseJob:
         :return: path to saved file
         """
         path = self._build_path(bucket, relative_path, filename, version=version)
+        tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        with path.open("w", encoding="utf-8") as f:
-            f.write(content)
+        try:
+            with tmp_path.open("w", encoding="utf-8") as f:
+                f.write(content)
+            tmp_path.replace(path)
+        except Exception:
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise
 
         logger.info("Saved HTML to %s", path.relative_to(DATA_ROOT))
 

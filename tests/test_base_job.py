@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -297,3 +298,58 @@ class TestListFiles:
         result = job.list_files("raw", "test", "*.json")
         assert len(result) == 2
         assert all(p.suffix == ".json" for p in result)
+
+
+class TestAtomicWriteCleanup:
+    """Verify atomic write cleans up .tmp files and preserves existing targets on failure."""
+
+    def test_save_json_preserves_original_on_failure(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        target = tmp_path / "raw" / "test_domain" / "test" / "data.json"
+        target.parent.mkdir(parents=True)
+        target.write_text('{"original": true}')
+
+        # Unserializable value forces json.dump to raise partway through
+        with pytest.raises(TypeError):
+            job.save_json({"key": object()}, "raw", "test", "data.json")
+
+        assert json.loads(target.read_text()) == {"original": True}
+        assert list(target.parent.glob("*.tmp")) == []
+
+    def test_save_parquet_preserves_original_on_failure(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        target = tmp_path / "stage" / "test_domain" / "test" / "data.parquet"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"original content")
+
+        def bad_write(self_df, path, **kwargs):
+            Path(path).write_bytes(b"partial")
+            raise IOError("disk full")
+
+        monkeypatch.setattr(pl.DataFrame, "write_parquet", bad_write)
+
+        df = pl.DataFrame({"a": [1]})
+        with pytest.raises(IOError, match="disk full"):
+            job.save_parquet(df, "stage", "test", "data.parquet")
+
+        assert target.read_bytes() == b"original content"
+        assert list(target.parent.glob("*.tmp")) == []
+
+    def test_save_html_preserves_original_on_failure(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
+        job = ConcreteJob()
+
+        target = tmp_path / "raw" / "test_domain" / "test" / "page.html"
+        target.parent.mkdir(parents=True)
+        target.write_text("<html>original</html>")
+
+        # Non-string content forces f.write() to raise TypeError
+        with pytest.raises(TypeError):
+            job.save_html(123, "raw", "test", "page.html")  # type: ignore[arg-type]
+
+        assert target.read_text() == "<html>original</html>"
+        assert list(target.parent.glob("*.tmp")) == []
