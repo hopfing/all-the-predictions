@@ -5,6 +5,8 @@ from atp.schemas import (
     TournamentType,
     _TOURNAMENT_TYPE_CIRCUIT,
     create_match_uid,
+    Circuit,
+    _CIRCUIT_DISPLAY,
 )
 
 
@@ -14,6 +16,12 @@ def test_all_tournament_types_have_circuit_mapping():
         assert (
             member in _TOURNAMENT_TYPE_CIRCUIT
         ), f"TournamentType.{member.name} is missing from _TOURNAMENT_TYPE_CIRCUIT in atp/schemas.py."
+
+
+def test_all_circuits_have_display_name():
+    """Every Circuit member must have a display name mapping."""
+    for circuit in Circuit:
+        assert circuit in _CIRCUIT_DISPLAY
 
 
 class TestRound:
