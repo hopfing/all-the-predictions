@@ -78,4 +78,11 @@ class BaseExtractor(BaseJob):
         headers = {"Accept": "application/json"}
         response = self._fetch(url, headers=headers)
 
+        content_type = response.headers.get("content-type", "")
+        if "application/json" not in content_type:
+            raise ValueError(
+                f"Expected JSON response, got content-type '{content_type}' from {url}. "
+                f"Response preview: {response.text[:200]}"
+            )
+
         return response.json()
