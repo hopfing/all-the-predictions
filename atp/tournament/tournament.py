@@ -38,6 +38,12 @@ class Tournament:
         return TOURNAMENT_NAMES.get(self.tournament_id, self.city)
 
     @property
+    def url_slug(self) -> str:
+        """URL-friendly slug for atptour.com paths."""
+
+        return self.name.lower().replace("'", "").replace(" ", "-")
+
+    @property
     def path(self) -> str:
         """
         Storage path segment for tournament-scoped files.
@@ -45,13 +51,9 @@ class Tournament:
         Format: tournaments/{circuit}/{tid}_{name_slug}/{year}
         Example: tournaments/tour/580_australian_open/2026
         """
-        name_slug = self.name.lower().replace(" ", "_").replace("-", "_")
-        return f"tournaments/{self.circuit.value}/{self.tournament_id}_{name_slug}/{self.year}"
+        path_slug = self.url_slug.replace("-", "_")
 
-    @property
-    def url_slug(self) -> str:
-        """URL-friendly slug for atptour.com paths."""
-        return self.name.lower().replace("'", "").replace(" ", "-")
+        return f"tournaments/{self.circuit.value}/{self.tournament_id}_{path_slug}/{self.year}"
 
     @property
     def logging_id(self) -> str:
