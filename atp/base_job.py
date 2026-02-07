@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 from datetime import datetime
@@ -148,6 +149,8 @@ class BaseJob:
         """
         Save polars DataFrame to parquet file, creating parent directories as needed.
 
+        Embeds a schema_hash in parquet metadata for future schema drift detection.
+
         :param df: DataFrame to save
         :param bucket: storage tier — raw, stage, or analytics
         :param relative_path: path within domain
@@ -158,8 +161,13 @@ class BaseJob:
         tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        schema_str = json.dumps([(col, str(dtype)) for col, dtype in df.schema.items()])
+        schema_hash = hashlib.md5(schema_str.encode()).hexdigest()[:16]
+
         try:
-            df.write_parquet(tmp_path)
+            df.write_parquet(
+                tmp_path, pyarrow_options={"metadata": {"schema_hash": schema_hash}}
+            )
             tmp_path.replace(path)
         except Exception:
             if tmp_path.exists():
