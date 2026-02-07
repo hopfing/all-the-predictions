@@ -49,7 +49,8 @@ class OverviewExtractor(BaseExtractor):
             year=year,
         )
 
-        self.save_json(data, "raw", tournament.path, "overview.json")
+        path = self._build_path("raw", tournament.path, "overview.json")
+        self.save_json(data, path)
 
         logger.info("Built Tournament object for %s", tournament.logging_id)
 

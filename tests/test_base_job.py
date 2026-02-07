@@ -119,7 +119,8 @@ class TestSaveJson:
         job = ConcreteJob()
 
         data = {"key": "value", "nested": {"foo": "bar"}}
-        path = job.save_json(data, "raw", "test/path", "test.json")
+        target = job._build_path("raw", "test/path", "test.json")
+        path = job.save_json(data, target)
 
         assert path.exists()
         with path.open() as f:
@@ -129,7 +130,8 @@ class TestSaveJson:
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
-        path = job.save_json({"a": 1}, "raw", "deep/nested/path", "test.json")
+        target = job._build_path("raw", "deep/nested/path", "test.json")
+        path = job.save_json({"a": 1}, target)
         assert path.exists()
         assert path.parent.exists()
 
@@ -137,16 +139,17 @@ class TestSaveJson:
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
-        path = job.save_json([], "raw", "test", "data.json")
+        target = job._build_path("raw", "test", "data.json")
+        path = job.save_json([], target)
         assert path == tmp_path / "raw" / "test_domain" / "test" / "data.json"
 
     def test_save_uses_indent(self, tmp_path, monkeypatch):
         monkeypatch.setattr("atp.base_job.DATA_ROOT", tmp_path)
         job = ConcreteJob()
 
-        job.save_json({"a": 1}, "raw", "test", "test.json")
-        path = tmp_path / "raw" / "test_domain" / "test" / "test.json"
-        content = path.read_text()
+        target = job._build_path("raw", "test", "test.json")
+        job.save_json({"a": 1}, target)
+        content = target.read_text()
         assert "  " in content  # indented
 
 
@@ -157,8 +160,9 @@ class TestReadJson:
         job = ConcreteJob()
 
         data = {"key": "value", "nested": {"foo": "bar"}}
-        path = job.save_json(data, "raw", "test/path", "test.json")
-        result = job.read_json(path)
+        target = job._build_path("raw", "test/path", "test.json")
+        job.save_json(data, target)
+        result = job.read_json(target)
 
         assert result == data
 
@@ -314,7 +318,7 @@ class TestAtomicWriteCleanup:
 
         # Unserializable value forces json.dump to raise partway through
         with pytest.raises(TypeError):
-            job.save_json({"key": object()}, "raw", "test", "data.json")
+            job.save_json({"key": object()}, target)
 
         assert json.loads(target.read_text()) == {"original": True}
         assert list(target.parent.glob("*.tmp")) == []

@@ -69,23 +69,14 @@ class BaseJob:
 
         return path
 
-    def save_json(
-        self,
-        data: dict | list,
-        bucket: str,
-        relative_path: str,
-        filename: str,
-    ) -> Path:
+    def save_json(self, data: dict | list, path: Path) -> Path:
         """
         Save JSON data to file, creating parent directories as needed.
 
         :param data: data to serialize
-        :param bucket: storage tier — raw, stage, or analytics
-        :param relative_path: path within domain
-        :param filename: filename (should end in .json)
+        :param path: absolute path to write JSON file
         :return: path to saved file
         """
-        path = self._build_path(bucket, relative_path, filename)
         tmp_path = path.with_suffix(path.suffix + ".tmp")
         path.parent.mkdir(parents=True, exist_ok=True)
 
