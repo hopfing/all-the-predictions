@@ -279,6 +279,11 @@ class ResultsTransformer(BaseJob):
             round_text = text
             court_name = None
 
+        if round_text not in ROUND_DISPLAY_MAP:
+            raise ValueError(
+                f"Unknown round '{round_text}' in results for "
+                f"{self.tournament.logging_id}. Update ROUND_DISPLAY_MAP in atp/schemas.py."
+            )
         round_enum = ROUND_DISPLAY_MAP[round_text]
         return round_enum, court_name
 

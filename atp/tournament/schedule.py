@@ -307,11 +307,20 @@ class ScheduleTransformer(BaseJob):
             self.tournament.logging_id,
         )
 
+    def _parse_round(self, round_text: str) -> Round:
+        try:
+            return Round[round_text]
+        except KeyError:
+            raise ValueError(
+                f"Unknown round_text '{round_text}' in schedule for "
+                f"{self.tournament.logging_id}. Add member to Round enum in atp/schemas.py."
+            )
+
     def _dedup_matches(self, df: pl.DataFrame) -> list[dict]:
         """Dedup by match_uid, keeping latest snapshot per match."""
         rows_by_uid = {}
         for row in df.iter_rows(named=True):
-            round_enum = Round[row["round_text"]]
+            round_enum = self._parse_round(row["round_text"])
             uid = create_match_uid(
                 row["year"],
                 row["tournament_id"],
@@ -330,7 +339,7 @@ class ScheduleTransformer(BaseJob):
 
     def _transform_row(self, row: dict) -> dict:
         """Transform a staged row dict into ScheduleRecord kwargs."""
-        round_enum = Round[row["round_text"]]
+        round_enum = self._parse_round(row["round_text"])
         match_date = date.fromisoformat(row["match_date_str"])
 
         time_suffix = row["time_suffix"]
