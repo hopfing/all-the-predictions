@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from atp.rankings import RankingsExtractor
 from atp.tournament.discovery import TournamentDiscovery
 from atp.tournament.match_stats import (
     MatchStatsExtractor,
@@ -40,6 +41,8 @@ def main():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+    RankingsExtractor().run()
 
     logger.info("Discovering active tournaments")
     active = TournamentDiscovery().get_active_tournaments()
