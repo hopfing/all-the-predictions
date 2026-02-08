@@ -179,7 +179,7 @@ class RankingsTransformer(BaseJob):
             if rank_up:
                 rank_move = int(rank_up.get_text(strip=True))
             elif rank_down:
-                rank_move = int(rank_down.get_text(strip=True))
+                rank_move = -int(rank_down.get_text(strip=True))
             else:
                 rank_move = None
 
