@@ -32,15 +32,15 @@ class ResultsExtractor(BaseExtractor):
 
     def _fetch_singles(self, tournament: Tournament) -> Path:
         url = self._results_url(tournament)
-        response = self._fetch(url)
+        html = self.fetch_html(url)
         target = self._build_path("raw", tournament.path, "results_singles.html")
-        return self.save_html(response.text, target)
+        return self.save_html(html, target)
 
     def _fetch_doubles(self, tournament: Tournament) -> Path:
         url = f"{self._results_url(tournament)}?matchType=doubles"
-        response = self._fetch(url)
+        html = self.fetch_html(url)
         target = self._build_path("raw", tournament.path, "results_doubles.html")
-        return self.save_html(response.text, target)
+        return self.save_html(html, target)
 
     def _results_url(self, tournament: Tournament) -> str:
         prefix = _CIRCUIT_URL_PREFIX[tournament.circuit]

@@ -45,7 +45,7 @@ class ScheduleExtractor(BaseExtractor):
 
         logger.info("Fetching schedule for %s", tournament.logging_id)
 
-        response = self._fetch(url)
+        html = self.fetch_html(url)
 
         target = self._build_path(
             "raw",
@@ -53,7 +53,7 @@ class ScheduleExtractor(BaseExtractor):
             "schedule.html",
             version="datetime",
         )
-        path = self.save_html(response.text, target)
+        path = self.save_html(html, target)
 
         logger.info("Saved schedule for %s", tournament.logging_id)
 
