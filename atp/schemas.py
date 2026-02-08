@@ -637,3 +637,27 @@ class MatchStatsRecord(BaseModel):
             self.opponent_id,
             self.is_doubles,
         )
+
+
+class RankingsRecord(BaseModel):
+    """Weekly singles ranking snapshot. One record per ranked player per week."""
+
+    ranking_date: date
+    rank: int
+    player_id: str
+    player_name: str
+    nationality: str
+    age: int
+    points: int
+    rank_move: int | None = None
+    points_move: int | None = None
+    tournaments_played: int
+    points_dropping: int | None = None
+    next_best: int | None = None
+
+    _uppercase_ids = field_validator("player_id", mode="before")(_uppercase_or_none)
+
+    @field_validator("nationality", mode="before")
+    @classmethod
+    def _uppercase_nationality(cls, v: str) -> str:
+        return v.upper()
