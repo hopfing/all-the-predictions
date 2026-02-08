@@ -49,7 +49,7 @@ _TOURNAMENT_TYPE_CIRCUIT = {
 }
 
 
-class Surface(Enum):
+class Surface(str, Enum):
     """
     Court surface types. Add new members here as new values are encountered.
     """
@@ -505,7 +505,7 @@ class MatchStatsRecord(BaseModel):
     # Tournament context
     tournament_id: int
     year: int
-    surface: str
+    surface: Surface
     tournament_start_date: date
     tournament_end_date: date
 
@@ -517,7 +517,7 @@ class MatchStatsRecord(BaseModel):
     is_qualifier: bool
     match_duration_seconds: int | None = None
     best_of: int
-    scoring_system: str
+    scoring_system: str  # "1" = singles, "9" = doubles
     reason: str | None = None
     tournament_day: int
     umpire: str | None = None
