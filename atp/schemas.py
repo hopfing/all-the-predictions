@@ -502,9 +502,14 @@ class MatchStatsRecord(BaseModel):
     """Per-player, per-set match statistics. Each match produces 2 players x (N+1) rows
     where set_num=0 holds match totals and set_num=1-5 holds per-set stats."""
 
-    # Match context
+    # Tournament context
     tournament_id: int
     year: int
+    surface: str
+    tournament_start_date: date
+    tournament_end_date: date
+
+    # Match context
     match_code: str
     round: Round
     court_name: str
@@ -512,6 +517,8 @@ class MatchStatsRecord(BaseModel):
     is_qualifier: bool
     match_duration_seconds: int | None = None
     best_of: int
+    scoring_system: str
+    reason: str | None = None
     tournament_day: int
     umpire: str | None = None
 

@@ -2,7 +2,11 @@ import argparse
 import logging
 
 from atp.tournament.discovery import TournamentDiscovery
-from atp.tournament.match_stats import MatchStatsExtractor, MatchStatsStager
+from atp.tournament.match_stats import (
+    MatchStatsExtractor,
+    MatchStatsStager,
+    MatchStatsTransformer,
+)
 from atp.tournament.overview import OverviewExtractor, OverviewTransformer
 from atp.tournament.results import ResultsExtractor, ResultsTransformer
 from atp.tournament.schedule import (
@@ -64,6 +68,7 @@ def main():
 
         MatchStatsExtractor().run(tournament)
         MatchStatsStager(tournament).run()
+        MatchStatsTransformer(tournament).run()
 
         logger.info("Completed %s", tournament.logging_id)
 
