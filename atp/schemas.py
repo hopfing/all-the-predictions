@@ -120,7 +120,14 @@ def create_match_uid(
     player_ids = "_".join(sorted([p1_id.upper(), p2_id.upper()]))
     match_uid = f"{year}_{tournament_id}_{draw}_{round.value}_{player_ids}"
     if not MATCH_UID_PATTERN.match(match_uid):
-        raise ValueError(f"Generated invalid match_uid: {match_uid}")
+        bad_ids = [pid for pid in (p1_id, p2_id) if ":" in pid]
+        hint = (
+            f" Player ID(s) {bad_ids} look like Sportradar format — "
+            f"add correction to atp/player_id_corrections.py."
+            if bad_ids
+            else ""
+        )
+        raise ValueError(f"Generated invalid match_uid: {match_uid}.{hint}")
     return match_uid
 
 
