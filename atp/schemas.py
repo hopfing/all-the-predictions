@@ -1,6 +1,7 @@
 import re
 from datetime import date, datetime
 from enum import Enum, auto
+from typing import Literal
 
 from pydantic import BaseModel, computed_field, field_validator, model_validator
 
@@ -375,7 +376,7 @@ class ResultsRecord(BaseModel):
     is_doubles: bool
 
     # Outcome
-    match_status: str  # "completed", "retired", "walkover"
+    match_status: Literal["completed", "retired", "walkover"]
     duration_seconds: int | None = None
     score: str  # "6-4 7-6(5)", "" for walkover
 
