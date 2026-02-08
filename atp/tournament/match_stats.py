@@ -55,16 +55,24 @@ class MatchStatsExtractor(BaseExtractor):
 
             try:
                 data = self.fetch_json(url)
-            except requests.HTTPError as e:
-                if e.response is not None and e.response.status_code == 500:
-                    logger.warning(
-                        "Hawkeye 500 for %s match %s — skipping",
-                        tournament.logging_id,
-                        match_code,
-                    )
-                    failed += 1
-                    continue
-                raise
+            except requests.RequestException as e:
+                logger.warning(
+                    "Hawkeye request failed for %s match %s — skipping: %s",
+                    tournament.logging_id,
+                    match_code,
+                    e,
+                )
+                failed += 1
+                continue
+            except ValueError as e:
+                logger.warning(
+                    "Hawkeye returned non-JSON for %s match %s — skipping: %s",
+                    tournament.logging_id,
+                    match_code,
+                    e,
+                )
+                failed += 1
+                continue
 
             self.save_json(data, target)
 
