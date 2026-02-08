@@ -51,30 +51,42 @@ def main():
         logger.info("No active tournaments found")
         return
 
+    failed = []
     for tournament_id, year in active:
-        logger.info("Found active tournament: %d (%d)", tournament_id, year)
-        overview_extractor = OverviewExtractor()
-        tournament = overview_extractor.run(
-            tournament_id=tournament_id,
-            year=year,
+        try:
+            logger.info("Found active tournament: %d (%d)", tournament_id, year)
+            overview_extractor = OverviewExtractor()
+            tournament = overview_extractor.run(
+                tournament_id=tournament_id,
+                year=year,
+            )
+
+            logger.info("Processing %s", tournament.logging_id)
+
+            OverviewTransformer(tournament).run()
+
+            ScheduleExtractor().run(tournament)
+            ScheduleStager(tournament).run()
+            ScheduleTransformer(tournament).run()
+
+            ResultsExtractor().run(tournament)
+            ResultsTransformer(tournament).run()
+
+            MatchStatsExtractor().run(tournament)
+            MatchStatsStager(tournament).run()
+            MatchStatsTransformer(tournament).run()
+
+            logger.info("Completed %s", tournament.logging_id)
+        except Exception:
+            logger.exception(
+                "Failed processing tournament %d (%d)", tournament_id, year
+            )
+            failed.append((tournament_id, year))
+
+    if failed:
+        raise RuntimeError(
+            f"Pipeline finished with {len(failed)} failed tournament(s): {failed}"
         )
-
-        logger.info("Processing %s", tournament.logging_id)
-
-        OverviewTransformer(tournament).run()
-
-        ScheduleExtractor().run(tournament)
-        ScheduleStager(tournament).run()
-        ScheduleTransformer(tournament).run()
-
-        ResultsExtractor().run(tournament)
-        ResultsTransformer(tournament).run()
-
-        MatchStatsExtractor().run(tournament)
-        MatchStatsStager(tournament).run()
-        MatchStatsTransformer(tournament).run()
-
-        logger.info("Completed %s", tournament.logging_id)
 
 
 if __name__ == "__main__":
