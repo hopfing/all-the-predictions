@@ -8,15 +8,10 @@ from bs4 import BeautifulSoup
 
 from atp.base_extractor import BaseExtractor
 from atp.base_job import BaseJob
-from atp.schemas import ROUND_DISPLAY_MAP, Circuit, ResultsRecord
+from atp.schemas import ROUND_DISPLAY_MAP, ResultsRecord
 from atp.tournament.tournament import Tournament
 
 logger = logging.getLogger(__name__)
-
-_CIRCUIT_URL_PREFIX = {
-    Circuit.TOUR: "current",
-    Circuit.CHALLENGER: "current-challenger",
-}
 
 
 class ResultsExtractor(BaseExtractor):
@@ -43,7 +38,7 @@ class ResultsExtractor(BaseExtractor):
         return self.save_html(html, target)
 
     def _results_url(self, tournament: Tournament) -> str:
-        prefix = _CIRCUIT_URL_PREFIX[tournament.circuit]
+        prefix = tournament.scores_url_prefix
         return (
             f"https://www.atptour.com/en/scores/{prefix}/"
             f"{tournament.url_slug}/{tournament.tournament_id}/results"

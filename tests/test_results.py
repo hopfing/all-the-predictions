@@ -8,19 +8,8 @@ from atp.schemas import Circuit, Round
 from atp.tournament.results import (
     ResultsExtractor,
     ResultsTransformer,
-    _CIRCUIT_URL_PREFIX,
 )
 from atp.tournament.tournament import Tournament
-
-
-class TestCircuitUrlPrefixSync:
-
-    def test_all_circuits_have_prefix(self):
-        """Every Circuit member must have an entry in _CIRCUIT_URL_PREFIX."""
-        for circuit in Circuit:
-            assert (
-                circuit in _CIRCUIT_URL_PREFIX
-            ), f"Circuit.{circuit.name} missing from _CIRCUIT_URL_PREFIX"
 
 
 class TestResultsUrl:

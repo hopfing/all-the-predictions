@@ -66,6 +66,18 @@ class Tournament:
         return f"tournaments/{self.circuit.value}/{self.tournament_id}_{path_slug}/{self.year}"
 
     @property
+    def scores_url_prefix(self) -> str:
+        """URL prefix for atptour.com /scores/ paths (e.g. 'current', 'current-challenger')."""
+        if self.circuit == Circuit.TOUR:
+            return "current"
+        if self.circuit == Circuit.CHALLENGER:
+            return "current-challenger"
+        raise ValueError(
+            f"No scores URL prefix for circuit {self.circuit!r}. "
+            f"Update Tournament.scores_url_prefix in tournament.py."
+        )
+
+    @property
     def logging_id(self) -> str:
         """
         Human-readable identifier for logging:

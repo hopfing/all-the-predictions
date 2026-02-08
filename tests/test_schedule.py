@@ -9,19 +9,21 @@ from atp.tournament.schedule import (
     ScheduleExtractor,
     ScheduleStager,
     ScheduleTransformer,
-    _CIRCUIT_URL_PREFIX,
 )
 from atp.tournament.tournament import Tournament
 
 
-class TestCircuitUrlPrefixSync:
+class TestScoresUrlPrefix:
 
     def test_all_circuits_have_prefix(self):
-        """Every Circuit member must have an entry in _CIRCUIT_URL_PREFIX."""
+        """Every Circuit member must produce a scores_url_prefix."""
         for circuit in Circuit:
-            assert (
-                circuit in _CIRCUIT_URL_PREFIX
-            ), f"Circuit.{circuit.name} missing from _CIRCUIT_URL_PREFIX"
+            t = Tournament(
+                tournament_id=1, year=2026, circuit=circuit, location="Test, XX"
+            )
+            assert isinstance(t.scores_url_prefix, str), (
+                f"Circuit.{circuit.name} has no scores_url_prefix"
+            )
 
 
 class TestScheduleUrl:
@@ -33,7 +35,7 @@ class TestScheduleUrl:
             location="Brisbane, Australia",
             circuit=Circuit.TOUR,
         )
-        prefix = _CIRCUIT_URL_PREFIX[t.circuit]
+        prefix = t.scores_url_prefix
         url = (
             f"https://www.atptour.com/en/scores/{prefix}/"
             f"{t.url_slug}/{t.tournament_id}/daily-schedule"
@@ -49,7 +51,7 @@ class TestScheduleUrl:
             location="Champaign, USA",
             circuit=Circuit.CHALLENGER,
         )
-        prefix = _CIRCUIT_URL_PREFIX[t.circuit]
+        prefix = t.scores_url_prefix
         url = (
             f"https://www.atptour.com/en/scores/{prefix}/"
             f"{t.url_slug}/{t.tournament_id}/daily-schedule"

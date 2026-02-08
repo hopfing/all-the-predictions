@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 from atp.base_extractor import BaseExtractor
 from atp.base_job import BaseJob
 from atp.schemas import (
-    Circuit,
     Round,
     ScheduleRecord,
     StagedScheduleRecord,
@@ -18,11 +17,6 @@ from atp.schemas import (
 from atp.tournament.tournament import Tournament
 
 logger = logging.getLogger(__name__)
-
-_CIRCUIT_URL_PREFIX = {
-    Circuit.TOUR: "current",
-    Circuit.CHALLENGER: "current-challenger",
-}
 
 
 class ScheduleExtractor(BaseExtractor):
@@ -37,7 +31,7 @@ class ScheduleExtractor(BaseExtractor):
         :param tournament: Tournament to fetch schedule for
         :return: path to saved HTML file
         """
-        prefix = _CIRCUIT_URL_PREFIX[tournament.circuit]
+        prefix = tournament.scores_url_prefix
         url = (
             f"https://www.atptour.com/en/scores/{prefix}/"
             f"{tournament.url_slug}/{tournament.tournament_id}/daily-schedule"
