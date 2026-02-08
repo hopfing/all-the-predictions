@@ -86,3 +86,8 @@ class BaseExtractor(BaseJob):
             )
 
         return response.json()
+
+    def fetch_html(self, url: str) -> str:
+        """Fetch HTML content from a URL."""
+        response = self._fetch(url)
+        return response.text
