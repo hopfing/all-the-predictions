@@ -29,6 +29,7 @@ class TournamentType(Enum):
     """
 
     GS = "GS"
+    ATP_1000 = "1000"
     ATP_250 = "250"
     ATP_500 = "500"
     CH = "CH"
@@ -42,6 +43,7 @@ class TournamentType(Enum):
 # Map TournamentType to circuit for storage and logging purposes.
 _TOURNAMENT_TYPE_CIRCUIT = {
     TournamentType.GS: Circuit.TOUR,
+    TournamentType.ATP_1000: Circuit.TOUR,
     TournamentType.ATP_250: Circuit.TOUR,
     TournamentType.ATP_500: Circuit.TOUR,
     TournamentType.CH: Circuit.CHALLENGER,
