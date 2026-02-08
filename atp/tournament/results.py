@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from atp.base_extractor import BaseExtractor
 from atp.base_job import BaseJob
-from atp.schemas import ROUND_DISPLAY_MAP, ResultsRecord
+from atp.schemas import ROUND_DISPLAY_MAP, ResultsRecord, parse_seed_entry
 from atp.tournament.tournament import Tournament
 
 logger = logging.getLogger(__name__)
@@ -361,22 +361,7 @@ class ResultsTransformer(BaseJob):
         span = name_div.find("span")
         if not span:
             return None, None
-
-        value = span.get_text(strip=True).strip("()")
-        if not value:
-            return None, None
-
-        if "/" in value:
-            parts = value.split("/", 1)
-            try:
-                return int(parts[0]), parts[1] or None
-            except ValueError:
-                return None, value
-
-        try:
-            return int(value), None
-        except ValueError:
-            return None, value
+        return parse_seed_entry(span.get_text(strip=True))
 
     @staticmethod
     def _parse_scores(winner_scores_div, loser_scores_div, status: str) -> dict:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import polars as pl
 import pytest
 
-from atp.schemas import Circuit, Round, StagedScheduleRecord
+from atp.schemas import Circuit, Round, StagedScheduleRecord, parse_seed_entry
 from atp.tournament.schedule import (
     ScheduleExtractor,
     ScheduleStager,
@@ -418,7 +418,7 @@ class TestParseSeedEntry:
         ],
     )
     def test_parse(self, value, expected):
-        assert ScheduleStager._parse_seed_entry(value) == expected
+        assert parse_seed_entry(value) == expected
 
 
 # --- ScheduleTransformer tests ---

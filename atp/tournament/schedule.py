@@ -13,6 +13,7 @@ from atp.schemas import (
     ScheduleRecord,
     StagedScheduleRecord,
     create_match_uid,
+    parse_seed_entry,
 )
 from atp.tournament.tournament import Tournament
 
@@ -189,7 +190,7 @@ class ScheduleStager(BaseJob):
 
         rank_div = player_div.find("div", class_="rank")
         rank_text = rank_div.get_text(strip=True) if rank_div else None
-        seed, entry = self._parse_seed_entry(rank_text)
+        seed, entry = parse_seed_entry(rank_text)
 
         return {
             f"{prefix}_id": player_id,
@@ -214,7 +215,7 @@ class ScheduleStager(BaseJob):
 
         rank_div = player_div.find("div", class_="rank")
         rank_text = rank_div.get_text(strip=True) if rank_div else None
-        seed, entry = self._parse_seed_entry(rank_text)
+        seed, entry = parse_seed_entry(rank_text)
 
         return {
             f"{prefix}_id": p1_id,
@@ -233,31 +234,6 @@ class ScheduleStager(BaseJob):
             player_name = name_link.get_text(strip=True)
             return player_id, player_name
         return None, None
-
-    @staticmethod
-    def _parse_seed_entry(value: str | None) -> tuple[int | None, str | None]:
-        """Parse combined seed/entry text into (seed, entry) tuple.
-
-        Examples: "1" → (1, None), "WC" → (None, "WC"), "1/Alt" → (1, "Alt")
-        """
-        if not value:
-            return None, None
-
-        value = value.strip("()")
-        if not value:
-            return None, None
-
-        if "/" in value:
-            parts = value.split("/", 1)
-            try:
-                return int(parts[0]), parts[1] or None
-            except ValueError:
-                return None, value
-
-        try:
-            return int(value), None
-        except ValueError:
-            return None, value
 
 
 class ScheduleTransformer(BaseJob):

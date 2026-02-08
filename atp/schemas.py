@@ -131,6 +131,31 @@ def create_match_uid(
     return match_uid
 
 
+def parse_seed_entry(value: str | None) -> tuple[int | None, str | None]:
+    """Parse combined seed/entry text into (seed, entry) tuple.
+
+    Examples: "1" → (1, None), "WC" → (None, "WC"), "1/Alt" → (1, "Alt"), "(3)" → (3, None)
+    """
+    if not value:
+        return None, None
+
+    value = value.strip("()")
+    if not value:
+        return None, None
+
+    if "/" in value:
+        parts = value.split("/", 1)
+        try:
+            return int(parts[0]), parts[1] or None
+        except ValueError:
+            return None, value
+
+    try:
+        return int(value), None
+    except ValueError:
+        return None, value
+
+
 _INDOOR_MAP = {"I": True, "O": False}
 
 
